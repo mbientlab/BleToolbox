@@ -32,13 +32,16 @@ import java.util.Locale;
  * @author Eric Tsai
  */
 public class BleDeviceScannerFragment extends DialogFragment {
+    public static final String KEY_SCAN_PERIOD=
+            "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
+
     public interface ScannerListener {
         public void btDeviceSelected(BluetoothDevice device);
     }
 
     private final static int RSSI_BAR_LEVELS= 5;
     private final static int RSSI_BAR_SCALE= 100 / RSSI_BAR_LEVELS;
-    private final static long SCAN_PERIOD= 10000;
+    private final static long DEFAULT_SCAN_PERIOD= 10000;
 
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
     private class ScannedDeviceInfoAdapter extends ArrayAdapter<ScannedDeviceInfo> {
@@ -105,11 +108,12 @@ public class BleDeviceScannerFragment extends DialogFragment {
     private Handler scannerHandler;
     private boolean isScanning= false;
     private BluetoothAdapter btAdapter= null;
+    private long scanPeriod;
 
     @Override
     public void onAttach(Activity activity) {
         if (!(activity instanceof ScannerListener)) {
-            throw new RuntimeException("Activity does not implement ScannerListener interface");
+            throw new ClassCastException(activity.toString() + " must implement ScannerListener");
         }
 
         listener= (ScannerListener) activity;
@@ -128,6 +132,10 @@ public class BleDeviceScannerFragment extends DialogFragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
+        scanPeriod= getArguments().getLong(KEY_SCAN_PERIOD, DEFAULT_SCAN_PERIOD);
+
+        getDialog().setTitle(R.string.title_scanned_devices);
+
         ListView scannedDevices= (ListView) view.findViewById(R.id.blescan_devices);
         scannedDevices.setAdapter(scannedDevicesAdapter);
         scannedDevices.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -184,7 +192,7 @@ public class BleDeviceScannerFragment extends DialogFragment {
             public void run() {
              stopBleScan();
             }
-        }, SCAN_PERIOD);
+        }, scanPeriod);
         btAdapter.startLeScan(scanCallback);
     }
 

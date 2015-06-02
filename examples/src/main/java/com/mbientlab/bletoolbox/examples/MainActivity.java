@@ -6,6 +6,7 @@ package com.mbientlab.bletoolbox.examples;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -85,7 +86,12 @@ public class MainActivity extends ActionBarActivity implements BleDeviceScannerF
     }
 
     public void showBleScan(View v) {
-        new BleDeviceScannerFragment().show(getFragmentManager(), "ble_scanner_fragment");
+        Bundle bundle= new Bundle();
+        bundle.putLong(BleDeviceScannerFragment.KEY_SCAN_PERIOD, 5000L);
+
+        BleDeviceScannerFragment scannerFrag= new BleDeviceScannerFragment();
+        scannerFrag.setArguments(bundle);
+        scannerFrag.show(getFragmentManager(), "ble_scanner_fragment");
     }
 
     @Override
