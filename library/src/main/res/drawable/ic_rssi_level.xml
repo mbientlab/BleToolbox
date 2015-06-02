@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2015 MbientLab Inc. All rights reserved.
+  ~ Author: Eric Tsai
+  -->
+
+<level-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:maxLevel="0" android:drawable="@mipmap/ic_action_network_cell" />
+    <item android:maxLevel="1" android:drawable="@mipmap/ic_action_network_cell_1" />
+    <item android:maxLevel="2" android:drawable="@mipmap/ic_action_network_cell_2" />
+    <item android:maxLevel="3" android:drawable="@mipmap/ic_action_network_cell_3" />
+    <item android:maxLevel="4" android:drawable="@mipmap/ic_action_network_cell_4" />
+</level-list>
