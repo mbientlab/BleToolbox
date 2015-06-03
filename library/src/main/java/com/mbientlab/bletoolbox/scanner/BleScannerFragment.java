@@ -17,18 +17,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import com.mbientlab.bletoolbox.R;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -36,74 +32,17 @@ import java.util.UUID;
  * @author Eric Tsai
  */
 public class BleScannerFragment extends DialogFragment {
+    public interface ScannerListener {
+        public void btDeviceSelected(BluetoothDevice device);
+    }
+
     private static final String KEY_SCAN_PERIOD=
             "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
     private static final String KEY_SERVICE_UUID=
             "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
 
-    public interface ScannerListener {
-        public void btDeviceSelected(BluetoothDevice device);
-    }
-
-    private final static int RSSI_BAR_LEVELS= 5;
-    private final static int RSSI_BAR_SCALE= 100 / RSSI_BAR_LEVELS;
     private final static long DEFAULT_SCAN_PERIOD= 5000;
-
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
-    private class ScannedDeviceInfoAdapter extends ArrayAdapter<ScannedDeviceInfo> {
-        public ScannedDeviceInfoAdapter(Context context, int resource) {
-            super(context, resource);
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            ViewHolder viewHolder;
-
-            if (convertView == null) {
-                convertView= LayoutInflater.from(getActivity()).inflate(R.layout.blescan_entry, parent, false);
-
-                viewHolder= new ViewHolder();
-                viewHolder.deviceAddress= (TextView) convertView.findViewById(R.id.ble_mac_address);
-                viewHolder.deviceName= (TextView) convertView.findViewById(R.id.ble_device);
-                viewHolder.deviceRSSI= (TextView) convertView.findViewById(R.id.ble_rssi_value);
-                viewHolder.rssiChart= (ImageView) convertView.findViewById(R.id.ble_rssi_png);
-
-                convertView.setTag(viewHolder);
-            } else {
-                viewHolder= (ViewHolder) convertView.getTag();
-            }
-
-            ScannedDeviceInfo deviceInfo= getItem(position);
-            final String deviceName= deviceInfo.btDevice.getName();
-
-            if (deviceName != null && deviceName.length() > 0)
-                viewHolder.deviceName.setText(deviceName);
-            else
-                viewHolder.deviceName.setText(R.string.label_unknown_device);
-            viewHolder.deviceAddress.setText(deviceInfo.btDevice.getAddress());
-            viewHolder.deviceRSSI.setText(String.format(Locale.US, "%d dBm", deviceInfo.rssi));
-            viewHolder.rssiChart.setImageLevel(Math.min(RSSI_BAR_LEVELS - 1, (127 + deviceInfo.rssi + 5) / RSSI_BAR_SCALE));
-
-            return convertView;
-        }
-
-        private class ViewHolder {
-            public TextView deviceAddress;
-            public TextView deviceName;
-            public TextView deviceRSSI;
-            public ImageView rssiChart;
-        }
-
-        public void update(ScannedDeviceInfo newInfo) {
-            int pos= getPosition(newInfo);
-            if (pos == -1) {
-                add(newInfo);
-            } else {
-                getItem(pos).rssi= newInfo.rssi;
-                notifyDataSetChanged();
-            }
-        }
-    };
 
     public static BleScannerFragment newInstance() {
         return BleScannerFragment.newInstance(DEFAULT_SCAN_PERIOD, new UUID[]{});
