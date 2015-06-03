@@ -6,14 +6,12 @@ package com.mbientlab.bletoolbox.examples;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.ParcelUuid;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -21,12 +19,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
-import com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment;
+import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 
 import java.util.Locale;
 import java.util.UUID;
 
-public class MainActivity extends ActionBarActivity implements BleDeviceScannerFragment.ScannerListener {
+public class MainActivity extends ActionBarActivity implements BleScannerFragment.ScannerListener {
     private final static int REQUEST_ENABLE_BT= 0;
 
     @Override
@@ -88,7 +86,7 @@ public class MainActivity extends ActionBarActivity implements BleDeviceScannerF
     }
 
     public void showBleScan(View v) {
-        BleDeviceScannerFragment.newInstance(new UUID[] {UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")})
+        BleScannerFragment.newInstance(new UUID[]{UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")})
                 .show(getFragmentManager(), "ble_scanner_fragment");
     }
 
