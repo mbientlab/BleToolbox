@@ -17,7 +17,8 @@ import com.mbientlab.bletoolbox.R;
 import java.util.Locale;
 
 /**
- * Created by etsai on 6/2/2015.
+ * Array adapter to display information about the scanned Bluetooth LE devices
+ * @author Eric Tsai
  */
 public class ScannedDeviceInfoAdapter extends ArrayAdapter<ScannedDeviceInfo> {
     private final static int RSSI_BAR_LEVELS= 5;

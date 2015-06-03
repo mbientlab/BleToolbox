@@ -7,7 +7,9 @@ package com.mbientlab.bletoolbox.scanner;
 import android.bluetooth.BluetoothDevice;
 
 /**
- * Created by etsai on 6/2/2015.
+ * Wrapper around the {@link BluetoothDevice} class to provide extra information for
+ * the device list view
+ * @author Eric Tsai
  */
 public class ScannedDeviceInfo {
     public final BluetoothDevice btDevice;

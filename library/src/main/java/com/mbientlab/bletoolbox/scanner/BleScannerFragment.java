@@ -25,14 +25,43 @@ import com.mbientlab.bletoolbox.R;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
- * A simple {@link DialogFragment} subclass.
+ * A {@link DialogFragment} that performs a Bluetooth LE scan and displays the results in a selectable list.  To use this
+ * fragment, the {@link BluetoothAdapter} must be non-null and enabled and implement the {@link ScannerListener} interface i.e. <br>
+ * <blockquote>
+ * <pre>
+ * public class ExampleActivity extends Activity implements BleScannerFragment.ScannerListener {
+ *     &#64;Override
+ *     protected void onCreate(Bundle savedInstanceState) {
+ *         super.onCreate(savedInstanceState);
+ *         BluetoothAdapter btAdapter=
+ *                 ((BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+ *         assert(btAdapter != null && btAdapter.isEnabled());
+ *     }
+ *
+ *     &#64;Override
+ *     public void btDeviceSelected(BluetoothDevice device) {
+ *         Toast.makeText(this, String.format(Locale.US, "Selected device: %s",
+ *                 device.getAddress()), Toast.LENGTH_LONG).show();
+ *     }
+ * }
+ * </pre>
+ * </blockquote>
  * @author Eric Tsai
  */
 public class BleScannerFragment extends DialogFragment {
+    /**
+     * Event listener for the {@link BleScannerFragment}
+     * @author Eric Tsai
+     */
     public interface ScannerListener {
+        /**
+         * Called when the user has selected a Bluetooth device from the device list
+         * @param device Device the user selected
+         */
         public void btDeviceSelected(BluetoothDevice device);
     }
 
@@ -41,26 +70,47 @@ public class BleScannerFragment extends DialogFragment {
     private static final String KEY_SERVICE_UUID=
             "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
 
-    private final static long DEFAULT_SCAN_PERIOD= 5000;
+    private final static long DEFAULT_SCAN_PERIOD= 5000L;
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
 
+    /**
+     * Creates an instance of the fragment with default configuration
+     * @return Scanner fragment that scans for 5000ms and shows all discovered devices
+     */
     public static BleScannerFragment newInstance() {
         return BleScannerFragment.newInstance(DEFAULT_SCAN_PERIOD, new UUID[]{});
     }
-    public static BleScannerFragment newInstance(long period) {
-        return BleScannerFragment.newInstance(period, new UUID[]{});
+    /**
+     * Creates an instance of the fragment with a user specified scanning duration.
+     * @param scanDuration How long to scan for Bluetooth LE devices
+     * @return Scanner fragment that scans for a user specified duration and shows all discovered devices
+     */
+    public static BleScannerFragment newInstance(long scanDuration) {
+        return BleScannerFragment.newInstance(scanDuration, new UUID[]{});
     }
+    /**
+     * Creates an instance of the fragment that only shows devices with one of the desired service UUIDs
+     * @param filterServiceUuids Array of allowed service UUIDs
+     * @return Scanner fragment that scans for 5000ms and filters the results
+     */
     public static BleScannerFragment newInstance(UUID[] filterServiceUuids) {
         return BleScannerFragment.newInstance(DEFAULT_SCAN_PERIOD, filterServiceUuids);
     }
-    public static BleScannerFragment newInstance(long scanPeriod, UUID[] filterServiceUuids) {
+    /**
+     * Creates an instance of the fragment that only shows devices with one of the desired service UUIDs found within
+     * the given scanning duration.
+     * @param scanDuration How long to scan for Bluetooth LE devices
+     * @param filterServiceUuids Array of allowed service UUIDs
+     * @return Scanner fragment that scans for a user specified duration and filters the results
+     */
+    public static BleScannerFragment newInstance(long scanDuration, UUID[] filterServiceUuids) {
         ParcelUuid[] filterServiceParcelUuids= new ParcelUuid[filterServiceUuids.length];
         for(int i= 0; i < filterServiceUuids.length; i++) {
             filterServiceParcelUuids[i]= new ParcelUuid(filterServiceUuids[i]);
         }
 
         Bundle bundle= new Bundle();
-        bundle.putLong(BleScannerFragment.KEY_SCAN_PERIOD, scanPeriod);
+        bundle.putLong(BleScannerFragment.KEY_SCAN_PERIOD, scanDuration);
         bundle.putParcelableArray(BleScannerFragment.KEY_SERVICE_UUID, filterServiceParcelUuids);
 
         BleScannerFragment newFragment= new BleScannerFragment();
@@ -69,6 +119,13 @@ public class BleScannerFragment extends DialogFragment {
         return newFragment;
     }
 
+    /**
+     * Required empty public constructor.  Users should use the static methods for instantiating this class.
+     * @see #newInstance()
+     * @see #newInstance(long)
+     * @see #newInstance(java.util.UUID[])
+     * @see #newInstance(long, java.util.UUID[])
+     */
     public BleScannerFragment() {
         // Required empty public constructor
     }
@@ -84,11 +141,16 @@ public class BleScannerFragment extends DialogFragment {
     @Override
     public void onAttach(Activity activity) {
         if (!(activity instanceof ScannerListener)) {
-            throw new ClassCastException(activity.toString() + " must implement ScannerListener");
+            throw new ClassCastException(String.format(Locale.US, "%s %s", activity.toString(),
+                    activity.getString(R.string.error_scanner_listener)));
         }
 
         listener= (ScannerListener) activity;
         btAdapter= ((BluetoothManager) activity.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+        if (btAdapter == null) {
+            throw new RuntimeException(activity.getString(R.string.error_no_bluetooth_adapter));
+        }
+
         super.onAttach(activity);
     }
 
@@ -170,6 +232,19 @@ public class BleScannerFragment extends DialogFragment {
 
                 byte type = buffer.get();
                 switch (type) {
+                    case 0x02: // Partial list of 16-bit UUIDs
+                    case 0x03: // Complete list of 16-bit UUIDs
+                        while (length >= 2) {
+                            UUID serviceUUID= UUID.fromString(String.format("%08x-0000-1000-8000-00805f9b34fb", buffer.getShort()));
+                            stop= filterServiceUuids.isEmpty() || filterServiceUuids.contains(serviceUUID);
+                            if (stop) {
+                                foundDevice(bluetoothDevice, rssi);
+                            }
+
+                            length -= 2;
+                        }
+                        break;
+
                     case 0x06: // Partial list of 128-bit UUIDs
                     case 0x07: // Complete list of 128-bit UUIDs
                         while (!stop && length >= 16) {
@@ -204,11 +279,14 @@ public class BleScannerFragment extends DialogFragment {
              stopBleScan();
             }
         }, scanPeriod);
+
+        ///< TODO: Use startScan method instead from API 21
         btAdapter.startLeScan(scanCallback);
     }
 
     private void stopBleScan() {
         if (isScanning) {
+            ///< TODO: Use stopScan method instead from API 21
             btAdapter.stopLeScan(scanCallback);
 
             isScanning= false;
