@@ -62,7 +62,7 @@ public class BleScannerFragment extends DialogFragment {
          * Called when the user has selected a Bluetooth device from the device list
          * @param device Device the user selected
          */
-        public void btDeviceSelected(BluetoothDevice device);
+        void btDeviceSelected(BluetoothDevice device);
     }
 
     private static final String KEY_SCAN_PERIOD=

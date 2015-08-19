@@ -7,7 +7,6 @@
     package="com.mbientlab.bletoolbox.examples" >
 
     <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
     <application
         android:allowBackup="true"
