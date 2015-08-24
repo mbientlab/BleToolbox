@@ -30,7 +30,8 @@ To use the scanner fragment as a popup dialog, your activity must implement the 
 ```java
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment.ScannerListener;
 
-public class ExampleDialogScannerActivity extends AppCompatActivity implements ScannerListener {
+public class ExampleDialogScannerActivity extends AppCompatActivity implements 
+        ScannerListener {
     public void openBleScannerFragment() {
         ///< Scan for devices, return only MetaWear devices
         BleScannerFragment.newInstance(new UUID[] {
@@ -65,8 +66,8 @@ import android.support.v7.app.AppCompatActivity;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment.*;
 
-public class ExampleEmbeddedScannerActivity extends AppCompatActivity implements ScannerListener, 
-        ScannerCommunicationBus {
+public class ExampleEmbeddedScannerActivity extends AppCompatActivity implements 
+        ScannerListener, ScannerCommunicationBus {
     private BleScannerFragment scannerFragment= null;
     
     @Override
