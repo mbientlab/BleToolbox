@@ -78,7 +78,7 @@
  */
 package no.nordicsemi.android.nrftoolbox.widget;
 
-import com.mbientlab.metawear.app.R;
+import com.mbientlab.bletoolbox.R;
 
 import android.content.Context;
 import android.graphics.Typeface;

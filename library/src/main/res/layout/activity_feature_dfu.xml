@@ -163,7 +163,7 @@
                     android:layout_alignParentTop="true"
                     android:layout_toRightOf="@+id/action_select_file"
                     android:onClick="onSelectFileHelpClicked"
-                    android:src="@drawable/ic_help" />
+                    android:src="@mipmap/ic_help" />
 
             </RelativeLayout>
         </LinearLayout>

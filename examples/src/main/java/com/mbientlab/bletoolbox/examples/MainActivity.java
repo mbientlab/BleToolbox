@@ -19,6 +19,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.mbientlab.bletoolbox.dfu.DfuActivity;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 
 import java.util.Locale;
@@ -90,8 +91,17 @@ public class MainActivity extends ActionBarActivity implements BleScannerFragmen
                 .show(getFragmentManager(), "ble_scanner_fragment");
     }
 
+    private BluetoothDevice device;
+    public void startDfu(View v) {
+        Intent dfuIntent= new Intent(this, DfuActivity.class);
+        dfuIntent.putExtra(DfuActivity.EXTRA_DEVICE_ADDRESS, device);
+        dfuIntent.putExtra(DfuActivity.EXTRA_MODEL_NUMBER, "0");
+        startActivity(dfuIntent);
+    }
+
     @Override
     public void btDeviceSelected(BluetoothDevice device) {
+        this.device= device;
         Toast.makeText(this, String.format(Locale.US, "Selected device: %s", device.getAddress()), Toast.LENGTH_LONG).show();
     }
 }

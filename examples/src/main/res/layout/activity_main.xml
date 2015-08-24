@@ -15,4 +15,12 @@
         android:text="@string/label_ble_scan"
         android:onClick="showBleScan"
         android:id="@+id/ble_scan" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ble_scan"
+        android:text="@string/label_dfu"
+        android:onClick="startDfu"
+        android:id="@+id/ble_dfu" />
 </RelativeLayout>

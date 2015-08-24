@@ -7,4 +7,7 @@
 
     <string name="error_scanner_listener">must implement the ScannerListener interface</string>
     <string name="error_no_bluetooth_adapter">Bluetooth adapter not found</string>
+
+    <string name="font_path">fonts/trebucbd.ttf</string>
+    <string name="normal_font_path">fonts/trebuc.ttf</string>
 </resources>

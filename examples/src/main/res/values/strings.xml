@@ -12,4 +12,5 @@
     <string name="error_no_bluetooth">Bluetooth device not detected</string>
     <string name="label_ok">OK</string>
     <string name="label_ble_scan">Ble Scan</string>
+    <string name="label_dfu">Dfu</string>
 </resources>

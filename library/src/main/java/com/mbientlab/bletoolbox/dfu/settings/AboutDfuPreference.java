@@ -78,7 +78,7 @@
  */
 package com.mbientlab.bletoolbox.dfu.settings;
 
-import com.mbientlab.metawear.app.R;
+import com.mbientlab.bletoolbox.R;
 
 import android.content.Context;
 import android.content.Intent;
@@ -107,7 +107,7 @@ public class AboutDfuPreference extends Preference {
 		if (intent.resolveActivity(context.getPackageManager()) != null)
 			context.startActivity(intent);
 		else {
-			Toast.makeText(getContext(), R.string.no_application, Toast.LENGTH_LONG).show();
+			Toast.makeText(getContext(), R.string.dfu_no_application, Toast.LENGTH_LONG).show();
 		}
 	}
 }

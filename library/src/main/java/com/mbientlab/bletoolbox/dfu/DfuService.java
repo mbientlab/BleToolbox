@@ -87,15 +87,13 @@ import java.util.UUID;
 
 import org.apache.http.client.methods.HttpGet;
 
-import com.mbientlab.metawear.impl.characteristic.DebugRegister;
-import com.mbientlab.metawear.impl.characteristic.Registers;
-import com.mbientlab.metawear.app.R;
-import com.mbientlab.metawear.app.BuildConfig;
+import com.mbientlab.bletoolbox.R;
+import com.mbientlab.bletoolbox.BuildConfig;
 
 import no.nordicsemi.android.log.LogContract.Log.Level;
 import no.nordicsemi.android.log.LogSession;
 import no.nordicsemi.android.log.Logger;
-import no.nordicsemi.android.nrftoolbox.dfu.settings.SettingsFragment;
+import com.mbientlab.bletoolbox.dfu.settings.SettingsFragment;
 import no.nordicsemi.android.nrftoolbox.utility.GattError;
 import android.app.IntentService;
 import android.app.Notification;
@@ -306,7 +304,8 @@ public class DfuService extends IntentService {
                 } else {
                     BluetoothGattService mwBleService = gatt.getService(METAWEAR_SERVICE);
                     BluetoothGattCharacteristic cmdRegister = mwBleService.getCharacteristic(METAWEAR_COMMAND);
-                    cmdRegister.setValue(Registers.buildWriteCommand(DebugRegister.JUMP_TO_BOOTLOADER));
+					cmdRegister.setValue(new byte[] {(byte) 0xfe, 0x2});
+                    //cmdRegister.setValue(Registers.buildWriteCommand(DebugRegister.JUMP_TO_BOOTLOADER));
 
                     gatt.writeCharacteristic(cmdRegister);
                 }
@@ -1274,7 +1273,7 @@ public class DfuService extends IntentService {
 		final String deviceAddress = mDeviceAddress;
 		final String deviceName = mDeviceName != null ? mDeviceName : getString(R.string.dfu_unknown_name);
 
-		final Bitmap largeIcon = BitmapFactory.decodeResource(getResources(), R.drawable.stat_dfu);
+		final Bitmap largeIcon = BitmapFactory.decodeResource(getResources(), R.mipmap.stat_dfu);
 
 		final Notification.Builder builder = new Notification.Builder(this).setSmallIcon(android.R.drawable.stat_sys_upload).setOnlyAlertOnce(true).setLargeIcon(largeIcon);
 		switch (progress) {

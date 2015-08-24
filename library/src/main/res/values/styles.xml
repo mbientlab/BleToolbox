@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2015 MbientLab Inc. All rights reserved.
+  -->
+
+<resources>
+    <style name="Widget" />
+
+    <style name="Widget.ActionBar" parent="@android:style/Widget.Holo.Light.ActionBar.Solid.Inverse">
+        <item name="android:background">@color/actionBarColor</item>
+        <item name="android:backgroundStacked">@color/actionBarColor</item>
+        <item name="android:backgroundSplit">@color/actionBarColor</item>
+        <item name="android:displayOptions">useLogo|showHome|showTitle</item>
+    </style>
+
+    <style name="Widget.ActionBar.Overflow" parent="@android:style/Widget.Holo.Light.ActionButton.Overflow">
+        <item name="android:src">@mipmap/ic_menu_moreoverflow</item>
+    </style>
+
+    <style name="Widget.ListTitle">
+        <item name="android:background">@color/headerBackgroundColor</item>
+        <item name="android:textColor">@color/headerTextColor</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="TextAppearance">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.Small">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+</resources>

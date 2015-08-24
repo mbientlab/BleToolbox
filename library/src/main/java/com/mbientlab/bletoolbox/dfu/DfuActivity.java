@@ -136,6 +136,7 @@ import java.util.Iterator;
 import java.util.UUID;
 
 import no.nordicsemi.android.nrftoolbox.AppHelpFragment;
+import no.nordicsemi.android.nrftoolbox.utility.GattError;
 
 /**
  * DfuActivity is the main DFU activity It implements DFUManagerCallbacks to receive callbacks from DFUManager class It implements 
@@ -144,6 +145,9 @@ import no.nordicsemi.android.nrftoolbox.AppHelpFragment;
  */
 public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cursor>,
         UploadCancelFragment.CancelFragmetnListener, FirmwareVersionSelector.FirmwareConfiguration {
+	public static final String EXTRA_BLE_DEVICE= "com.mbientlab.bletoolbox.dfu.DfuActivity.EXTRA_BLE_DEVICE";
+	public static final String EXTRA_MODEL_NUMBER= "com.mbientlab.bletoolbox.dfu.DfuActivity.EXTRA_MODEL_NUMBER";
+
     private final static UUID METAWEAR_SERVICE= UUID.fromString("326A9000-85CB-9195-D9DD-464CFBBAE75A");
 	private static final String TAG = "DfuActivity";
     private final static String METAWEAR_BUILD= "vanilla";
@@ -165,7 +169,6 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 	private static final String EXTRA_URI = "uri";
 
 	private static final int SELECT_FILE_REQ = 1;
-	static final int REQUEST_ENABLE_BT = 2;
 
 	private TextView mDeviceNameView;
 	private TextView mFileNameView;
@@ -223,8 +226,11 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 			mStatusOk = savedInstanceState.getBoolean(DATA_STATUS);
 			mUploadButton.setEnabled(mStatusOk);
             mModelNumber= savedInstanceState.getString(DATA_MODEL_NUMBER);
+		} else {
+			mModelNumber= getIntent().getStringExtra(EXTRA_MODEL_NUMBER);
 		}
-		mSelectedDevice= getIntent().getParcelableExtra(ModuleActivity.EXTRA_BLE_DEVICE);
+
+		mSelectedDevice= getIntent().getParcelableExtra(EXTRA_BLE_DEVICE);
 	}
 
 	@Override
@@ -238,7 +244,9 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 	private void setGUI() {
 		final ActionBar actionBar = getActionBar();
-		actionBar.setDisplayHomeAsUpEnabled(true);
+		if (actionBar != null) {
+			actionBar.setDisplayHomeAsUpEnabled(true);
+		}
 
 		mDeviceNameView = (TextView) findViewById(R.id.device_name);
 		mFileNameView = (TextView) findViewById(R.id.file_name);
@@ -294,7 +302,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 	private void isBLESupported() {
 		if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-			showToast(R.string.no_ble);
+			showToast(R.string.error_no_bluetooth_adapter);
 			finish();
 		}
 	}
@@ -315,25 +323,19 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 	@Override
 	public boolean onOptionsItemSelected(final MenuItem item) {
-		switch (item.getItemId()) {
-		case R.id.action_connect:
-            final FragmentManager fm = getSupportFragmentManager();
-            final ScannerFragment dialog = ScannerFragment.getInstance(this, 
-                    new UUID[] {METAWEAR_SERVICE, DfuService.DFU_SERVICE_UUID}, true);
-            dialog.show(fm, "scan_fragment");
-            break;
-		case android.R.id.home:
+		int id= item.getItemId();
+
+		if (id == android.R.id.home) {
 			onBackPressed();
-			break;
-		case R.id.action_about:
+		}
+		if (id == R.id.action_about) {
 			final AppHelpFragment fragment = AppHelpFragment.getInstance(R.string.dfu_about_text);
 			fragment.show(getSupportFragmentManager(), "help_fragment");
-			break;
-		case R.id.action_settings:
+		} else if (id == R.id.action_settings) {
 			final Intent intent = new Intent(this, SettingsActivity.class);
 			startActivity(intent);
-			break;
 		}
+
 		return true;
 	}
 
@@ -479,20 +481,6 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 		}
 	}
 
-    @Override
-    public void selectedModelNumber(String number) {
-        if (mModelNumber == null || !mModelNumber.equals(number)) {
-            mModelNumber = number;
-
-            mFileNameView.setText(null);
-            mFileSizeView.setText(null);
-            mFilePath = null;
-            mFileStreamUri = null;
-            mStatusOk = false;
-            mFileStatusView.setText(R.string.dfu_file_status_no_file);
-        }
-    }
-
     private class CheckFilesTask extends AsyncTask<Uri, Integer, Long> {
 	    private Uri uri;
         /* (non-Javadoc)
@@ -636,19 +624,6 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 		service.putExtra(DfuService.EXTRA_FILE_URI, mFileStreamUri);
 		startService(service);
 	}
-	
-	/**
-     * Callback of CONNECT/DISCONNECT button on DfuActivity
-     */
-    public void onConnectClicked(final View view) {
-        if (mSelectedDevice == null) {
-            final FragmentManager fm = getSupportFragmentManager();
-            final ScannerFragment dialog = ScannerFragment.getInstance(DfuActivity.this, 
-                    new UUID[] {METAWEAR_SERVICE, DfuService.DFU_SERVICE_UUID}, true);
-            dialog.show(fm, "scan_fragment");
-        }
-    }
-
 
 	private void showUploadCancelDialog() {
 		final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
@@ -711,7 +686,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 				showErrorMessage(progress);
 			} else {
 				mProgressBar.setProgress(progress);
-				mTextPercentage.setText(getString(R.string.progress, progress));
+				mTextPercentage.setText(getString(R.string.dfu_progress, progress));
 			}
 			break;
 		}
@@ -745,29 +720,5 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 		mUploadButton.setEnabled(false);
 		mDeviceNameView.setText(R.string.dfu_default_name);
 		mUploadButton.setText(R.string.dfu_action_upload);
-	}
-
-	@Override
-	public void onDeviceSelected(final BluetoothDevice device, final String name) {
-		mSelectedDevice = device;
-		mUploadButton.setEnabled(mStatusOk);
-		mDeviceNameView.setText(name);
-
-        final FragmentManager fm= getSupportFragmentManager();
-        final DeviceAttributeSelector dialog= new DeviceAttributeSelector();
-        dialog.show(fm, "device_attribute_selector");
-	}
-
-	@Override
-	public void onDialogCanceled() {
-		// do nothing
-	}
-	
-	@Override
-	public void onBackPressed () {
-	    Intent result = new Intent();
-	    result.putExtra(ModuleActivity.EXTRA_BLE_DEVICE, mSelectedDevice);
-	    setResult(RESULT_OK, result);
-	    super.onBackPressed();
 	}
 }

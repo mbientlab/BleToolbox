@@ -78,7 +78,7 @@
  */
 package com.mbientlab.bletoolbox.dfu.settings;
 
-import com.mbientlab.metawear.app.R;
+import com.mbientlab.bletoolbox.R;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
