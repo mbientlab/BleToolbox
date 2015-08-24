@@ -31,6 +31,7 @@ import com.mbientlab.bletoolbox.R;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.UUID;
@@ -72,13 +73,31 @@ public class BleScannerFragment extends DialogFragment {
         void btDeviceSelected(BluetoothDevice device);
     }
 
+    /**
+     * Bridge to transfer settings from a parent activity to the fragment.  This interface is only needed if the
+     * fragment is instantiated directly from the layout file rather than calling DialogFragment.show()
+     * @author Eric Tsai
+     */
+    public interface ScannerCommunicationBus {
+        /**
+         * Retrieve an array of allowed service UUIDs
+         * @return Service UUIDs to scan for
+         */
+        UUID[] getFilterServiceUuids();
+
+        /**
+         * Retrieve how long to scan for Bluetooth LE devices
+         * @return Bluetooth LE scan duration, in milliseconds
+         */
+        long getScanDuration();
+    }
+
     private static final String KEY_SCAN_PERIOD=
             "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
     private static final String KEY_SERVICE_UUID=
             "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
 
     private final static long DEFAULT_SCAN_PERIOD= 5000L;
-    private ScannedDeviceInfoAdapter scannedDevicesAdapter;
 
     /**
      * Creates an instance of the fragment with default configuration
@@ -137,14 +156,17 @@ public class BleScannerFragment extends DialogFragment {
         // Required empty public constructor
     }
 
+    private ScannedDeviceInfoAdapter scannedDevicesAdapter;
     private Button scanControl;
-    private ScannerListener listener;
-    private Handler scannerHandler;
+    private Handler mHandler;
     private boolean isScanning= false;
     private BluetoothAdapter btAdapter= null;
-    private long scanPeriod;
+    private long scanDuration;
     private HashSet<UUID> filterServiceUuids;
     private ArrayList<ScanFilter> api21ScanFilters;
+
+    private ScannerListener listener;
+    private ScannerCommunicationBus commBus= null;
 
     @Override
     public void onAttach(Activity activity) {
@@ -159,6 +181,9 @@ public class BleScannerFragment extends DialogFragment {
             throw new RuntimeException(activity.getString(R.string.error_no_bluetooth_adapter));
         }
 
+        if (activity instanceof ScannerCommunicationBus) {
+            commBus= (ScannerCommunicationBus) activity;
+        }
         super.onAttach(activity);
     }
 
@@ -167,39 +192,57 @@ public class BleScannerFragment extends DialogFragment {
                              Bundle savedInstanceState) {
         scannedDevicesAdapter= new ScannedDeviceInfoAdapter(getActivity(), R.id.blescan_entry_layout);
         scannedDevicesAdapter.setNotifyOnChange(true);
-        scannerHandler= new Handler();
+        mHandler = new Handler();
         return inflater.inflate(R.layout.blescan_device_list, container);
     }
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        scanPeriod= getArguments().getLong(KEY_SCAN_PERIOD, DEFAULT_SCAN_PERIOD);
-        ParcelUuid[] filterParcelUuids= (ParcelUuid[]) getArguments().getParcelableArray(KEY_SERVICE_UUID);
+        if (commBus == null) {
+            scanDuration = getArguments().getLong(KEY_SCAN_PERIOD, DEFAULT_SCAN_PERIOD);
+            ParcelUuid[] filterParcelUuids= (ParcelUuid[]) getArguments().getParcelableArray(KEY_SERVICE_UUID);
 
-        if (filterParcelUuids != null) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                filterServiceUuids = new HashSet<>();
-                for (ParcelUuid pUuid : filterParcelUuids) {
-                    filterServiceUuids.add(pUuid.getUuid());
+            if (filterParcelUuids != null) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                    filterServiceUuids = new HashSet<>();
+                    for (ParcelUuid pUuid : filterParcelUuids) {
+                        filterServiceUuids.add(pUuid.getUuid());
+                    }
+                } else {
+                    api21ScanFilters= new ArrayList<>();
+                    for (ParcelUuid pUuid : filterParcelUuids) {
+                        api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(pUuid).build());
+                    }
                 }
-            } else {
-                api21ScanFilters= new ArrayList<>();
-                for (ParcelUuid pUuid : filterParcelUuids) {
-                    api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(pUuid).build());
+            }
+        } else {
+            scanDuration = commBus.getScanDuration();
+            UUID[] filterUuids= commBus.getFilterServiceUuids();
+
+            if (filterUuids != null) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                    filterServiceUuids = new HashSet<>();
+                    filterServiceUuids.addAll(Arrays.asList(filterUuids));
+                } else {
+                    api21ScanFilters= new ArrayList<>();
+                    for (UUID uuid : filterUuids) {
+                        api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build());
+                    }
                 }
             }
         }
 
-        getDialog().setTitle(R.string.title_scanned_devices);
+        if (getDialog() != null) {
+            getDialog().setTitle(R.string.title_scanned_devices);
+        }
 
         ListView scannedDevices= (ListView) view.findViewById(R.id.blescan_devices);
         scannedDevices.setAdapter(scannedDevicesAdapter);
         scannedDevices.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                if (isScanning) {
-                    stopBleScan();
-                }
+                stopBleScan();
+
                 listener.btDeviceSelected(scannedDevicesAdapter.getItem(i).btDevice);
                 dismiss();
             }
@@ -234,18 +277,18 @@ public class BleScannerFragment extends DialogFragment {
         scannedDevicesAdapter.clear();
         isScanning= true;
         scanControl.setText(R.string.ble_scan_cancel);
-        scannerHandler.postDelayed(new Runnable() {
+        mHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 stopBleScan();
             }
-        }, scanPeriod);
+        }, scanDuration);
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             ///< TODO: Use startScan method instead from API 21
             deprecatedScanCallback= new BluetoothAdapter.LeScanCallback() {
                 private void foundDevice(final BluetoothDevice btDevice, final int rssi) {
-                    getActivity().runOnUiThread(new Runnable() {
+                    mHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             scannedDevicesAdapter.update(new ScannedDeviceInfo(btDevice, rssi));

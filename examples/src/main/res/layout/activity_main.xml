@@ -19,7 +19,15 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/label_ble_scan"
+        android:onClick="startBleScanActivity"
         android:layout_below="@+id/ble_scan"
+        android:id="@+id/ble_scan_activity" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ble_scan_activity"
         android:text="@string/label_dfu"
         android:onClick="startDfu"
         android:id="@+id/ble_dfu" />

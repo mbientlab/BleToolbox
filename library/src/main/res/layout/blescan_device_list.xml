@@ -18,5 +18,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/ble_scan_cancel"
+        style="?android:attr/buttonBarButtonStyle"
         android:id="@+id/blescan_control" />
 </LinearLayout>

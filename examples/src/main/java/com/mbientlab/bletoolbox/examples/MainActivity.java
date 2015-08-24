@@ -91,6 +91,11 @@ public class MainActivity extends ActionBarActivity implements BleScannerFragmen
                 .show(getFragmentManager(), "ble_scanner_fragment");
     }
 
+    public void startBleScanActivity(View v) {
+        Intent bleScanIntent= new Intent(this, ScannerActivity.class);
+        startActivity(bleScanIntent);
+    }
+
     private BluetoothDevice device;
     public void startDfu(View v) {
         Intent dfuIntent= new Intent(this, MetaWearDfuActivity.class);

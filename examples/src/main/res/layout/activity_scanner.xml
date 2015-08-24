@@ -1,0 +1,22 @@
+<!--
+  ~ Copyright 2015 MbientLab Inc. All rights reserved.
+  -->
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:id="@+id/textView"
+        android:text="@string/title_scanned_devices"
+        android:layout_gravity="center_horizontal" />
+
+    <fragment xmlns:tools="http://schemas.android.com/tools" android:id="@+id/fragment"
+        android:name="com.mbientlab.bletoolbox.scanner.BleScannerFragment"
+        tools:layout="@layout/blescan_device_list" android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</LinearLayout>
