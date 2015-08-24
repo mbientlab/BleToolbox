@@ -700,9 +700,9 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 	}
 
 	private void clearUI() {
-		mProgressBar.setVisibility(View.INVISIBLE);
-		mTextPercentage.setVisibility(View.INVISIBLE);
-		mTextUploading.setVisibility(View.INVISIBLE);
+		mProgressBar.setVisibility(View.GONE);
+		mTextPercentage.setVisibility(View.GONE);
+		mTextUploading.setVisibility(View.GONE);
 
 		mUploadButton.setText(R.string.dfu_action_upload);
 	}
