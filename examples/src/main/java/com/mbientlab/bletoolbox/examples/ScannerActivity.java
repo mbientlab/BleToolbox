@@ -48,7 +48,7 @@ public class ScannerActivity extends ActionBarActivity implements BleScannerFrag
     }
 
     @Override
-    public void btDeviceSelected(BluetoothDevice device) {
+    public void onDeviceSelected(BluetoothDevice device) {
         Toast.makeText(this, String.format(Locale.US, "Selected device: %s", device.getAddress()), Toast.LENGTH_LONG).show();
     }
 
@@ -60,5 +60,10 @@ public class ScannerActivity extends ActionBarActivity implements BleScannerFrag
     @Override
     public long getScanDuration() {
         return 10000;
+    }
+
+    @Override
+    public void retrieveFragmentReference(BleScannerFragment scannerFragment) {
+
     }
 }

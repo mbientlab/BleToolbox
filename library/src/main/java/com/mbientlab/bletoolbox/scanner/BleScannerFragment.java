@@ -6,6 +6,8 @@ package com.mbientlab.bletoolbox.scanner;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.DialogFragment;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -14,9 +16,10 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.app.DialogFragment;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.view.LayoutInflater;
@@ -51,7 +54,7 @@ import java.util.UUID;
  *     }
  *
  *     &#64;Override
- *     public void btDeviceSelected(BluetoothDevice device) {
+ *     public void onDeviceSelected(BluetoothDevice device) {
  *         Toast.makeText(this, String.format(Locale.US, "Selected device: %s",
  *                 device.getAddress()), Toast.LENGTH_LONG).show();
  *     }
@@ -61,6 +64,8 @@ import java.util.UUID;
  * @author Eric Tsai
  */
 public class BleScannerFragment extends DialogFragment {
+    private static final int REQUEST_ENABLE_BT = 1;
+
     /**
      * Event listener for the {@link BleScannerFragment}
      * @author Eric Tsai
@@ -70,7 +75,7 @@ public class BleScannerFragment extends DialogFragment {
          * Called when the user has selected a Bluetooth device from the device list
          * @param device Device the user selected
          */
-        void btDeviceSelected(BluetoothDevice device);
+        void onDeviceSelected(BluetoothDevice device);
     }
 
     /**
@@ -90,6 +95,12 @@ public class BleScannerFragment extends DialogFragment {
          * @return Bluetooth LE scan duration, in milliseconds
          */
         long getScanDuration();
+
+        /**
+         * Send a reference of this fragment to the calling activity
+         * @param scannerFragment Reference to this class
+         */
+        void retrieveFragmentReference(BleScannerFragment scannerFragment);
     }
 
     private static final String KEY_SCAN_PERIOD=
@@ -164,12 +175,13 @@ public class BleScannerFragment extends DialogFragment {
     private long scanDuration;
     private HashSet<UUID> filterServiceUuids;
     private ArrayList<ScanFilter> api21ScanFilters;
+    private boolean isScanReady;
 
     private ScannerListener listener;
     private ScannerCommunicationBus commBus= null;
 
     @Override
-    public void onAttach(Activity activity) {
+    public void onAttach(final Activity activity) {
         if (!(activity instanceof ScannerListener)) {
             throw new ClassCastException(String.format(Locale.US, "%s %s", activity.toString(),
                     activity.getString(R.string.error_scanner_listener)));
@@ -177,14 +189,46 @@ public class BleScannerFragment extends DialogFragment {
 
         listener= (ScannerListener) activity;
         btAdapter= ((BluetoothManager) activity.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+
         if (btAdapter == null) {
-            throw new RuntimeException(activity.getString(R.string.error_no_bluetooth_adapter));
+            new AlertDialog.Builder(activity).setTitle(R.string.dialog_title_error)
+                    .setMessage(R.string.error_no_bluetooth_adapter)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.no_bt_dialog_ok, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            activity.finish();
+                        }
+                    })
+                    .create()
+                    .show();
+        } else if (!btAdapter.isEnabled()) {
+            final Intent enableIntent= new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        } else {
+            isScanReady = true;
         }
 
         if (activity instanceof ScannerCommunicationBus) {
             commBus= (ScannerCommunicationBus) activity;
+            commBus.retrieveFragmentReference(this);
         }
+
+
         super.onAttach(activity);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case REQUEST_ENABLE_BT:
+                if (resultCode == Activity.RESULT_CANCELED) {
+                    getActivity().finish();
+                } else {
+                    startBleScan();
+                }
+                break;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
@@ -243,7 +287,7 @@ public class BleScannerFragment extends DialogFragment {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 stopBleScan();
 
-                listener.btDeviceSelected(scannedDevicesAdapter.getItem(i).btDevice);
+                listener.onDeviceSelected(scannedDevicesAdapter.getItem(i).btDevice);
                 dismiss();
             }
         });
@@ -260,7 +304,9 @@ public class BleScannerFragment extends DialogFragment {
             }
         });
 
-        startBleScan();
+        if (isScanReady) {
+            startBleScan();
+        }
     }
 
     @Override
@@ -273,7 +319,7 @@ public class BleScannerFragment extends DialogFragment {
     private ScanCallback api21ScallCallback= null;
 
     @TargetApi(22)
-    private void startBleScan() {
+    public void startBleScan() {
         scannedDevicesAdapter.clear();
         isScanning= true;
         scanControl.setText(R.string.ble_scan_cancel);
@@ -362,7 +408,7 @@ public class BleScannerFragment extends DialogFragment {
         }
     }
 
-    private void stopBleScan() {
+    public void stopBleScan() {
         if (isScanning) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                 ///< TODO: Use stopScan method instead from API 21

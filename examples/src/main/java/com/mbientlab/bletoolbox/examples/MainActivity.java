@@ -12,8 +12,8 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,7 +25,7 @@ import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import java.util.Locale;
 import java.util.UUID;
 
-public class MainActivity extends ActionBarActivity implements BleScannerFragment.ScannerListener {
+public class MainActivity extends AppCompatActivity implements BleScannerFragment.ScannerListener {
     private final static int REQUEST_ENABLE_BT= 0;
 
     @Override
@@ -106,7 +106,7 @@ public class MainActivity extends ActionBarActivity implements BleScannerFragmen
     }
 
     @Override
-    public void btDeviceSelected(BluetoothDevice device) {
+    public void onDeviceSelected(BluetoothDevice device) {
         this.device= device;
         Toast.makeText(this, String.format(Locale.US, "Selected device: %s", device.getAddress()), Toast.LENGTH_LONG).show();
     }
