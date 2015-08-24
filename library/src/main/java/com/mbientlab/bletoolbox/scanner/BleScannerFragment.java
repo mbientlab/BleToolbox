@@ -85,7 +85,7 @@ public class BleScannerFragment extends DialogFragment {
      */
     public interface ScannerCommunicationBus {
         /**
-         * Retrieve an array of allowed service UUIDs
+         * Retrieve an array of allowed service UUIDs.  If no filtering should be done, return null.
          * @return Service UUIDs to scan for
          */
         UUID[] getFilterServiceUuids();
@@ -242,18 +242,22 @@ public class BleScannerFragment extends DialogFragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            filterServiceUuids = new HashSet<>();
+        } else {
+            api21ScanFilters= new ArrayList<>();
+        }
+
         if (commBus == null) {
             scanDuration = getArguments().getLong(KEY_SCAN_PERIOD, DEFAULT_SCAN_PERIOD);
             ParcelUuid[] filterParcelUuids= (ParcelUuid[]) getArguments().getParcelableArray(KEY_SERVICE_UUID);
 
             if (filterParcelUuids != null) {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    filterServiceUuids = new HashSet<>();
                     for (ParcelUuid pUuid : filterParcelUuids) {
                         filterServiceUuids.add(pUuid.getUuid());
                     }
                 } else {
-                    api21ScanFilters= new ArrayList<>();
                     for (ParcelUuid pUuid : filterParcelUuids) {
                         api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(pUuid).build());
                     }
@@ -265,10 +269,8 @@ public class BleScannerFragment extends DialogFragment {
 
             if (filterUuids != null) {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    filterServiceUuids = new HashSet<>();
                     filterServiceUuids.addAll(Arrays.asList(filterUuids));
                 } else {
-                    api21ScanFilters= new ArrayList<>();
                     for (UUID uuid : filterUuids) {
                         api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build());
                     }

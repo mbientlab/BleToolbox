@@ -6,7 +6,7 @@ package com.mbientlab.bletoolbox.examples;
 
 import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -16,7 +16,7 @@ import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import java.util.Locale;
 import java.util.UUID;
 
-public class ScannerActivity extends ActionBarActivity implements BleScannerFragment.ScannerListener, BleScannerFragment.ScannerCommunicationBus {
+public class ScannerActivity extends AppCompatActivity implements BleScannerFragment.ScannerListener, BleScannerFragment.ScannerCommunicationBus {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +54,7 @@ public class ScannerActivity extends ActionBarActivity implements BleScannerFrag
 
     @Override
     public UUID[] getFilterServiceUuids() {
-        return new UUID[]{UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")};
+        return new UUID[] {UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")};
     }
 
     @Override

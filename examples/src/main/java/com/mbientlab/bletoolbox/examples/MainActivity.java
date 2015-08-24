@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
     }
 
     public void showBleScan(View v) {
-        BleScannerFragment.newInstance(new UUID[]{UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")})
+        BleScannerFragment.newInstance(new UUID[] {UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")})
                 .show(getFragmentManager(), "ble_scanner_fragment");
     }
 
@@ -100,7 +100,6 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
     public void startDfu(View v) {
         Intent dfuIntent= new Intent(this, MetaWearDfuActivity.class);
         dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_BLE_DEVICE, device);
-        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_DEVICE_NAME, "MetaWear");
         dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_MODEL_NUMBER, "1");
         startActivity(dfuIntent);
     }
