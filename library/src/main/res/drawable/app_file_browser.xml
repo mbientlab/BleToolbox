@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (c) 2013 Nordic Semiconductor. All Rights Reserved.
+  
+  The information contained herein is property of Nordic Semiconductor ASA.
+  Terms and conditions of usage are described in detail in NORDIC SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+  Licensees are granted free, non-transferable use of the information. NO WARRANTY of ANY KIND is provided. 
+  This heading must NOT be removed from the file.
+-->
+<level-list  xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:maxLevel="0" android:drawable="@mipmap/app_drive" />
+    <item android:maxLevel="1" android:drawable="@mipmap/app_file_manager" />
+    <item android:maxLevel="2" android:drawable="@mipmap/app_total_commander" />
+    <item android:maxLevel="3" android:drawable="@mipmap/app_google_play" />
+</level-list>

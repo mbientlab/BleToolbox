@@ -19,7 +19,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
-import com.mbientlab.bletoolbox.dfu.DfuActivity;
+import com.mbientlab.bletoolbox.dfu.MetaWearDfuActivity;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 
 import java.util.Locale;
@@ -93,9 +93,10 @@ public class MainActivity extends ActionBarActivity implements BleScannerFragmen
 
     private BluetoothDevice device;
     public void startDfu(View v) {
-        Intent dfuIntent= new Intent(this, DfuActivity.class);
-        dfuIntent.putExtra(DfuActivity.EXTRA_DEVICE_ADDRESS, device);
-        dfuIntent.putExtra(DfuActivity.EXTRA_MODEL_NUMBER, "0");
+        Intent dfuIntent= new Intent(this, MetaWearDfuActivity.class);
+        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_BLE_DEVICE, device);
+        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_DEVICE_NAME, "MetaWear");
+        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_MODEL_NUMBER, "1");
         startActivity(dfuIntent);
     }
 

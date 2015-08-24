@@ -80,7 +80,7 @@ package com.mbientlab.bletoolbox.dfu.fragment;
 
 import com.mbientlab.bletoolbox.R;
 
-import com.mbientlab.bletoolbox.dfu.DfuService;
+import com.mbientlab.bletoolbox.dfu.MetaWearDfuService;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -126,8 +126,8 @@ public class UploadCancelFragment extends DialogFragment {
 					@Override
 					public void onClick(DialogInterface dialog, int whichButton) {
 						final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(getActivity());
-						final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-						pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
+						final Intent pauseAction = new Intent(MetaWearDfuService.BROADCAST_ACTION);
+						pauseAction.putExtra(MetaWearDfuService.EXTRA_ACTION, MetaWearDfuService.ACTION_ABORT);
 						manager.sendBroadcast(pauseAction);
 
 						mListener.onUploadCanceled();
@@ -136,8 +136,8 @@ public class UploadCancelFragment extends DialogFragment {
 					@Override
 					public void onClick(DialogInterface dialog, int whichButton) {
 						final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(getActivity());
-						final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-						pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_RESUME);
+						final Intent pauseAction = new Intent(MetaWearDfuService.BROADCAST_ACTION);
+						pauseAction.putExtra(MetaWearDfuService.EXTRA_ACTION, MetaWearDfuService.ACTION_RESUME);
 						manager.sendBroadcast(pauseAction);
 					}
 				}).create();

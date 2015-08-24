@@ -120,7 +120,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-public class DfuService extends IntentService {
+public class MetaWearDfuService extends IntentService {
 	private static final String TAG = "DfuService";
 
 	public static final String EXTRA_DEVICE_ADDRESS = "no.nordicsemi.android.extra.dfu.EXTRA_DEVICE_ADDRESS";
@@ -497,7 +497,7 @@ public class DfuService extends IntentService {
 		};
 	};
 
-	public DfuService() {
+	public MetaWearDfuService() {
 		super(TAG);
 	}
 
@@ -1316,11 +1316,11 @@ public class DfuService extends IntentService {
 		// When creating activities the parent Activity is not created, it's just inserted to the history stack.
 		final Intent intent = new Intent(this, NotificationActivity.class);
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		intent.putExtra(DfuActivity.EXTRA_DEVICE_ADDRESS, deviceAddress);
-		intent.putExtra(DfuActivity.EXTRA_DEVICE_NAME, deviceName);
-		intent.putExtra(DfuActivity.EXTRA_PROGRESS, progress); // this may contains ERROR_CONNECTION_MASK bit!
+		intent.putExtra(MetaWearDfuActivity.EXTRA_DEVICE_ADDRESS, deviceAddress);
+		intent.putExtra(MetaWearDfuActivity.EXTRA_DEVICE_NAME, deviceName);
+		intent.putExtra(MetaWearDfuActivity.EXTRA_PROGRESS, progress); // this may contains ERROR_CONNECTION_MASK bit!
 		if (mLogSession != null)
-			intent.putExtra(DfuActivity.EXTRA_LOG_URI, mLogSession.getSessionUri());
+			intent.putExtra(MetaWearDfuActivity.EXTRA_LOG_URI, mLogSession.getSessionUri());
 		final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 		builder.setContentIntent(pendingIntent);
 
@@ -1387,7 +1387,7 @@ public class DfuService extends IntentService {
 
 	private static IntentFilter makeDfuActionIntentFilter() {
 		final IntentFilter intentFilter = new IntentFilter();
-		intentFilter.addAction(DfuService.BROADCAST_ACTION);
+		intentFilter.addAction(MetaWearDfuService.BROADCAST_ACTION);
 		return intentFilter;
 	}
 

@@ -44,7 +44,7 @@
     <string name="dfu_file_status_invalid_message">Please, select valid HEX file</string>
 
     <string name="dfu_action_update_latest">USE LATEST</string>
-    <string name="dfu_action_choose_version">CHOOSE VER</string>
+    <string name="dfu_action_choose_version">SELECT VER</string>
     <string name="dfu_action_select_file">SELECT FILE</string>
 
     <string name="dfu_alert_no_filebrowser_title">File Browser not found</string>

@@ -94,12 +94,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.provider.MediaStore;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.ActionBarActivity;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -143,7 +143,7 @@ import no.nordicsemi.android.nrftoolbox.utility.GattError;
  * DeviceScannerFragment.OnDeviceSelectedListener callback to receive
  * callback when device is selected from scanning dialog The activity supports portrait and landscape orientations
  */
-public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cursor>,
+public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCallbacks<Cursor>,
         UploadCancelFragment.CancelFragmetnListener, FirmwareVersionSelector.FirmwareConfiguration {
 	public static final String EXTRA_BLE_DEVICE= "com.mbientlab.bletoolbox.dfu.DfuActivity.EXTRA_BLE_DEVICE";
 	public static final String EXTRA_MODEL_NUMBER= "com.mbientlab.bletoolbox.dfu.DfuActivity.EXTRA_MODEL_NUMBER";
@@ -170,7 +170,6 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 	private static final int SELECT_FILE_REQ = 1;
 
-	private TextView mDeviceNameView;
 	private TextView mFileNameView;
 	private TextView mFileSizeView;
 	private TextView mFileStatusView;
@@ -192,11 +191,11 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 			// DFU is in progress or an error occurred 
 			final String action = intent.getAction();
 
-			if (DfuService.BROADCAST_PROGRESS.equals(action)) {
-				final int progress = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
+			if (MetaWearDfuService.BROADCAST_PROGRESS.equals(action)) {
+				final int progress = intent.getIntExtra(MetaWearDfuService.EXTRA_DATA, 0);
 				updateProgressBar(progress, false);
-			} else if (DfuService.BROADCAST_ERROR.equals(action)) {
-				final int error = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
+			} else if (MetaWearDfuService.BROADCAST_ERROR.equals(action)) {
+				final int error = intent.getIntExtra(MetaWearDfuService.EXTRA_DATA, 0);
 				updateProgressBar(error, true);
 
 				// We have to wait a bit before canceling notification. This is called before DfuService creates the last notification.
@@ -205,7 +204,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 					public void run() {
 						// if this activity is still open and upload process was completed, cancel the notification
 						final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-						manager.cancel(DfuService.NOTIFICATION_ID);
+						manager.cancel(MetaWearDfuService.NOTIFICATION_ID);
 					}
 				}, 200);
 			}
@@ -248,7 +247,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 			actionBar.setDisplayHomeAsUpEnabled(true);
 		}
 
-		mDeviceNameView = (TextView) findViewById(R.id.device_name);
+		TextView mDeviceNameView = (TextView) findViewById(R.id.device_name);
 		mFileNameView = (TextView) findViewById(R.id.file_name);
 		mFileSizeView = (TextView) findViewById(R.id.file_size);
 		mFileStatusView = (TextView) findViewById(R.id.file_status);
@@ -264,7 +263,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 		mProgressBar = (ProgressBar) findViewById(R.id.progressbar_file);
 
 		final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-		final boolean uploadInProgress = preferences.getBoolean(DfuService.PREFS_DFU_IN_PROGRESS, false);
+		final boolean uploadInProgress = preferences.getBoolean(MetaWearDfuService.PREFS_DFU_IN_PROGRESS, false);
 		if (uploadInProgress) {
 			// Restore image file information
 			mDeviceNameView.setText(preferences.getString(PREFS_DEVICE_NAME, ""));
@@ -272,6 +271,8 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 			mFileSizeView.setText(preferences.getString(PREFS_FILE_SIZE, ""));
 			mFileStatusView.setText(R.string.dfu_file_status_ok);
 			showProgressBar();
+		} else {
+			mDeviceNameView.setText("MetaWear");
 		}
 	}
 
@@ -294,9 +295,9 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 	private static IntentFilter makeDfuUpdateIntentFilter() {
 		final IntentFilter intentFilter = new IntentFilter();
-		intentFilter.addAction(DfuService.BROADCAST_PROGRESS);
-		intentFilter.addAction(DfuService.BROADCAST_ERROR);
-		intentFilter.addAction(DfuService.BROADCAST_LOG);
+		intentFilter.addAction(MetaWearDfuService.BROADCAST_PROGRESS);
+		intentFilter.addAction(MetaWearDfuService.BROADCAST_ERROR);
+		intentFilter.addAction(MetaWearDfuService.BROADCAST_LOG);
 		return intentFilter;
 	}
 
@@ -596,7 +597,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 	 */
 	public void onUploadClicked(final View view) {
 		final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-		final boolean dfuInProgress = preferences.getBoolean(DfuService.PREFS_DFU_IN_PROGRESS, false);
+		final boolean dfuInProgress = preferences.getBoolean(MetaWearDfuService.PREFS_DFU_IN_PROGRESS, false);
 		if (dfuInProgress) {
 			showUploadCancelDialog();
 			return;
@@ -617,18 +618,18 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 		showProgressBar();
 
-		final Intent service = new Intent(this, DfuService.class);
-		service.putExtra(DfuService.EXTRA_DEVICE_ADDRESS, mSelectedDevice.getAddress());
-		service.putExtra(DfuService.EXTRA_DEVICE_NAME, mSelectedDevice.getName());
-		service.putExtra(DfuService.EXTRA_FILE_PATH, mFilePath);
-		service.putExtra(DfuService.EXTRA_FILE_URI, mFileStreamUri);
+		final Intent service = new Intent(this, MetaWearDfuService.class);
+		service.putExtra(MetaWearDfuService.EXTRA_DEVICE_ADDRESS, mSelectedDevice.getAddress());
+		service.putExtra(MetaWearDfuService.EXTRA_DEVICE_NAME, mSelectedDevice.getName());
+		service.putExtra(MetaWearDfuService.EXTRA_FILE_PATH, mFilePath);
+		service.putExtra(MetaWearDfuService.EXTRA_FILE_URI, mFileStreamUri);
 		startService(service);
 	}
 
 	private void showUploadCancelDialog() {
 		final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-		final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-		pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_PAUSE);
+		final Intent pauseAction = new Intent(MetaWearDfuService.BROADCAST_ACTION);
+		pauseAction.putExtra(MetaWearDfuService.EXTRA_ACTION, MetaWearDfuService.ACTION_PAUSE);
 		manager.sendBroadcast(pauseAction);
 
 		UploadCancelFragment fragment = UploadCancelFragment.getInstance();
@@ -650,23 +651,23 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 	private void updateProgressBar(final int progress, final boolean error) {
 		switch (progress) {
-		case DfuService.PROGRESS_CONNECTING:
+		case MetaWearDfuService.PROGRESS_CONNECTING:
 			mProgressBar.setIndeterminate(true);
 			mTextPercentage.setText(R.string.dfu_status_connecting);
 			break;
-		case DfuService.PROGRESS_STARTING:
+		case MetaWearDfuService.PROGRESS_STARTING:
 			mProgressBar.setIndeterminate(true);
 			mTextPercentage.setText(R.string.dfu_status_starting);
 			break;
-		case DfuService.PROGRESS_VALIDATING:
+		case MetaWearDfuService.PROGRESS_VALIDATING:
 			mProgressBar.setIndeterminate(true);
 			mTextPercentage.setText(R.string.dfu_status_validating);
 			break;
-		case DfuService.PROGRESS_DISCONNECTING:
+		case MetaWearDfuService.PROGRESS_DISCONNECTING:
 			mProgressBar.setIndeterminate(true);
 			mTextPercentage.setText(R.string.dfu_status_disconnecting);
 			break;
-		case DfuService.PROGRESS_COMPLETED:
+		case MetaWearDfuService.PROGRESS_COMPLETED:
 			mTextPercentage.setText(R.string.dfu_status_completed);
 			// let's wait a bit until we reconnect to the device again. Mainly because of the notification. When canceled immediately it will be recreated by service again.
 			new Handler().postDelayed(new Runnable() {
@@ -676,7 +677,7 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
 
 					// if this activity is still open and upload process was completed, cancel the notification
 					final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-					manager.cancel(DfuService.NOTIFICATION_ID);
+					manager.cancel(MetaWearDfuService.NOTIFICATION_ID);
 				}
 			}, 200);
 			break;
@@ -718,7 +719,6 @@ public class DfuActivity extends FragmentActivity implements LoaderCallbacks<Cur
         }
 		
 		mUploadButton.setEnabled(false);
-		mDeviceNameView.setText(R.string.dfu_default_name);
 		mUploadButton.setText(R.string.dfu_action_upload);
 	}
 }

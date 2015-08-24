@@ -13,6 +13,9 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+
+        <service android:name="com.mbientlab.bletoolbox.dfu.MetaWearDfuService" />
+
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name" >
@@ -22,6 +25,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name="com.mbientlab.bletoolbox.dfu.MetaWearDfuActivity"
+            android:icon="@mipmap/ic_dfu_feature"
+            android:label="@string/dfu_feature_title" >
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+            </activity>
+
+        <activity
+            android:name="com.mbientlab.bletoolbox.dfu.settings.SettingsActivity"
+            android:label="@string/dfu_settings_title" />
     </application>
 
 </manifest>

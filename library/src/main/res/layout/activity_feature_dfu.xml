@@ -146,7 +146,8 @@
 	                android:layout_width="wrap_content"
 	                android:layout_height="wrap_content"
 	                android:onClick="onChooseVersionClicked"
-	                android:text="@string/dfu_action_choose_version" />
+	                android:text="@string/dfu_action_choose_version"
+                    android:layout_alignEnd="@+id/action_select_file" />
                 
                 <Button
 	                android:id="@+id/action_update_latest"
