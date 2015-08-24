@@ -120,53 +120,6 @@
                         android:text="@string/dfu_file_status_no_file" />
                 </TableRow>
             </TableLayout>
-
-            <RelativeLayout
-                android:id="@+id/RelativeLayout1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/feature_section_padding"
-                android:layout_marginTop="8dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingLeft="42dp" >
-
-                <Button
-                    android:id="@+id/action_select_file"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentLeft="true"
-                    android:layout_alignParentTop="true"
-                    android:onClick="onSelectFileClicked"
-                    android:text="@string/dfu_action_select_file" />
-                
-                <Button
-	                android:id="@+id/action_choose_version"
-	                android:layout_below="@+id/action_select_file"
-	                android:layout_width="wrap_content"
-	                android:layout_height="wrap_content"
-	                android:onClick="onChooseVersionClicked"
-	                android:text="@string/dfu_action_choose_version"
-                    android:layout_alignEnd="@+id/action_select_file" />
-                
-                <Button
-	                android:id="@+id/action_update_latest"
-	                android:layout_below="@+id/action_choose_version"
-	                android:layout_width="wrap_content"
-	                android:layout_height="wrap_content"
-	                android:onClick="onUpdateLatestClicked"
-	                android:text="@string/dfu_action_update_latest" />
-
-                <ImageView
-                    android:id="@+id/ImageView1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentTop="true"
-                    android:layout_toRightOf="@+id/action_select_file"
-                    android:onClick="onSelectFileHelpClicked"
-                    android:src="@mipmap/ic_help" />
-
-            </RelativeLayout>
         </LinearLayout>
 
         <!-- DFU section -->

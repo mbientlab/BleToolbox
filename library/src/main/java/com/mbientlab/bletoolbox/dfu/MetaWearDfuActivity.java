@@ -123,13 +123,13 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -176,7 +176,6 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 	private ProgressBar mProgressBar;
 
 	private Button mUploadButton;
-	private Button[] firmwareButtons;
 
 	private BluetoothDevice mSelectedDevice;
 	private String mFilePath, mModelNumber= null;
@@ -228,6 +227,7 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		}
 
 		mSelectedDevice= getIntent().getParcelableExtra(EXTRA_BLE_DEVICE);
+		selectLatestVersion();
 	}
 
 	@Override
@@ -249,11 +249,6 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		mFileNameView = (TextView) findViewById(R.id.file_name);
 		mFileSizeView = (TextView) findViewById(R.id.file_size);
 		mFileStatusView = (TextView) findViewById(R.id.file_status);
-		
-		firmwareButtons= new Button[3];
-		firmwareButtons[0]= (Button) findViewById(R.id.action_select_file);
-		firmwareButtons[1]= (Button) findViewById(R.id.action_choose_version);
-		firmwareButtons[2]= (Button) findViewById(R.id.action_update_latest);
 
 		mUploadButton = (Button) findViewById(R.id.action_upload);
 		mTextPercentage = (TextView) findViewById(R.id.textviewProgress);
@@ -333,6 +328,17 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		} else if (id == R.id.action_settings) {
 			final Intent intent = new Intent(this, SettingsActivity.class);
 			startActivity(intent);
+		} else if (id == R.id.action_select_latest) {
+			selectLatestVersion();
+		} else if (id == R.id.action_select_file) {
+			onSelectFileClicked();
+		} else if (id == R.id.action_select_version) {
+			try {
+				URL modulesXml= new URL("http://releases.mbientlab.com/metawear/info.json");
+				new GetVersionsTask().execute(modulesXml);
+			} catch (MalformedURLException e) {
+				Toast.makeText(this, e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+			}
 		}
 
 		return true;
@@ -403,9 +409,10 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 	public void onLoaderReset(final Loader<Cursor> loader) {
 		mFileNameView.setText(null);
 		mFileSizeView.setText(null);
-		mFilePath = null;
 		mFileStreamUri = null;
 		mStatusOk = false;
+
+		selectLatestVersion();
 	}
 
 	@Override
@@ -441,13 +448,12 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		new AlertDialog.Builder(this).setTitle(R.string.dfu_help_title).setMessage(R.string.dfu_help_message).setPositiveButton(android.R.string.ok, null).show();
 	}
 
-	/**
-	 * Called when Select File was pressed
-	 * 
-	 * @param view
-	 *            a button that was pressed
-	 */
-	public void onSelectFileClicked(final View view) {
+	private void selectLatestVersion() {
+		mFileStreamUri= Uri.parse(String.format("http://releases.mbientlab.com/metawear/%s/%s/latest/firmware.hex", mModelNumber, METAWEAR_BUILD));
+		new CheckFilesTask().execute(mFileStreamUri);
+	}
+
+	private void onSelectFileClicked() {
 		final Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
 		intent.setType("application/octet-stream");
 		intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -517,12 +523,7 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
             }
         }
 	    
-	};
-	
-	public void onUpdateLatestClicked(final View view) {
-        mFileStreamUri= Uri.parse(String.format("http://releases.mbientlab.com/metawear/%s/%s/latest/firmware.hex", mModelNumber, METAWEAR_BUILD));
-        new CheckFilesTask().execute(mFileStreamUri);
-    }
+	}
 
 	private String[] mVersions;
 	private class GetVersionsTask extends AsyncTask<URL, Integer, String[]> {
@@ -584,11 +585,6 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
     public String[] availableVersions() {
         return mVersions;
     }
-    
-	public void onChooseVersionClicked(final View view) throws XmlPullParserException, IOException {
-	    URL modulesXml= new URL("http://releases.mbientlab.com/metawear/info.json");
-	    new GetVersionsTask().execute(modulesXml);
-	}
 
 	/**
 	 * Callback of UPDATE/CANCEL button on DfuActivity
@@ -638,10 +634,6 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		mProgressBar.setVisibility(View.VISIBLE);
 		mTextPercentage.setVisibility(View.VISIBLE);
 		mTextUploading.setVisibility(View.VISIBLE);
-		
-		for(Button button: firmwareButtons) {
-		    button.setEnabled(false);
-		}
 		    
 		mUploadButton.setEnabled(true);
 		mUploadButton.setText(R.string.dfu_action_upload_cancel);
@@ -711,12 +703,7 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		mProgressBar.setVisibility(View.INVISIBLE);
 		mTextPercentage.setVisibility(View.INVISIBLE);
 		mTextUploading.setVisibility(View.INVISIBLE);
-		
-		for(Button button: firmwareButtons) {
-            button.setEnabled(true);
-        }
-		
-		mUploadButton.setEnabled(false);
+
 		mUploadButton.setText(R.string.dfu_action_upload);
 	}
 

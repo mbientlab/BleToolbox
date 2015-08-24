@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
     public void startDfu(View v) {
         Intent dfuIntent= new Intent(this, MetaWearDfuActivity.class);
         dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_BLE_DEVICE, device);
-        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_MODEL_NUMBER, "1");
+        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_MODEL_NUMBER, "0");
         startActivity(dfuIntent);
     }
 
