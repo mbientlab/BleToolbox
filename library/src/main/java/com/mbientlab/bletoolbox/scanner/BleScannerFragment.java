@@ -396,7 +396,7 @@ public class BleScannerFragment extends DialogFragment {
             api21ScallCallback= new ScanCallback() {
                 @Override
                 public void onScanResult(int callbackType, final ScanResult result) {
-                    getActivity().runOnUiThread(new Runnable() {
+                    mHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             scannedDevicesAdapter.update(new ScannedDeviceInfo(result.getDevice(), result.getRssi()));
