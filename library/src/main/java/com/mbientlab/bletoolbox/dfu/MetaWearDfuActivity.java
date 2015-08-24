@@ -133,7 +133,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.UUID;
 
 import no.nordicsemi.android.nrftoolbox.AppHelpFragment;
 import no.nordicsemi.android.nrftoolbox.utility.GattError;
@@ -148,7 +147,6 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 	public static final String EXTRA_BLE_DEVICE= "com.mbientlab.bletoolbox.dfu.DfuActivity.EXTRA_BLE_DEVICE";
 	public static final String EXTRA_MODEL_NUMBER= "com.mbientlab.bletoolbox.dfu.DfuActivity.EXTRA_MODEL_NUMBER";
 
-    private final static UUID METAWEAR_SERVICE= UUID.fromString("326A9000-85CB-9195-D9DD-464CFBBAE75A");
 	private static final String TAG = "DfuActivity";
     private final static String METAWEAR_BUILD= "vanilla";
 
@@ -720,5 +718,13 @@ public class MetaWearDfuActivity extends ActionBarActivity implements LoaderCall
 		
 		mUploadButton.setEnabled(false);
 		mUploadButton.setText(R.string.dfu_action_upload);
+	}
+
+	@Override
+	public void onBackPressed () {
+		Intent result = new Intent();
+		result.putExtra(EXTRA_BLE_DEVICE, mSelectedDevice);
+		setResult(RESULT_OK, result);
+		super.onBackPressed();
 	}
 }
