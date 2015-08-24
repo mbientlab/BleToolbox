@@ -4,11 +4,17 @@
 
 package com.mbientlab.bletoolbox.scanner;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.app.DialogFragment;
 import android.os.Handler;
@@ -24,6 +30,7 @@ import com.mbientlab.bletoolbox.R;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.UUID;
@@ -137,6 +144,7 @@ public class BleScannerFragment extends DialogFragment {
     private BluetoothAdapter btAdapter= null;
     private long scanPeriod;
     private HashSet<UUID> filterServiceUuids;
+    private ArrayList<ScanFilter> api21ScanFilters;
 
     @Override
     public void onAttach(Activity activity) {
@@ -169,9 +177,16 @@ public class BleScannerFragment extends DialogFragment {
         ParcelUuid[] filterParcelUuids= (ParcelUuid[]) getArguments().getParcelableArray(KEY_SERVICE_UUID);
 
         if (filterParcelUuids != null) {
-            filterServiceUuids= new HashSet<>();
-            for (ParcelUuid pUuid : filterParcelUuids) {
-                filterServiceUuids.add(pUuid.getUuid());
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                filterServiceUuids = new HashSet<>();
+                for (ParcelUuid pUuid : filterParcelUuids) {
+                    filterServiceUuids.add(pUuid.getUuid());
+                }
+            } else {
+                api21ScanFilters= new ArrayList<>();
+                for (ParcelUuid pUuid : filterParcelUuids) {
+                    api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(pUuid).build());
+                }
             }
         }
 
@@ -211,64 +226,10 @@ public class BleScannerFragment extends DialogFragment {
         super.onDestroyView();
     }
 
-    private final BluetoothAdapter.LeScanCallback scanCallback= new BluetoothAdapter.LeScanCallback() {
-        private void foundDevice(final BluetoothDevice btDevice, final int rssi) {
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    scannedDevicesAdapter.update(new ScannedDeviceInfo(btDevice, rssi));
-                }
-            });
-        }
-        @Override
-        public void onLeScan(BluetoothDevice bluetoothDevice, int rssi, byte[] scanRecord) {
-            ///< Service UUID parsing code taking from stack overflow= http://stackoverflow.com/a/24539704
+    private BluetoothAdapter.LeScanCallback deprecatedScanCallback= null;
+    private ScanCallback api21ScallCallback= null;
 
-            ByteBuffer buffer= ByteBuffer.wrap(scanRecord).order(ByteOrder.LITTLE_ENDIAN);
-            boolean stop= false;
-            while (!stop && buffer.remaining() > 2) {
-                byte length = buffer.get();
-                if (length == 0) break;
-
-                byte type = buffer.get();
-                switch (type) {
-                    case 0x02: // Partial list of 16-bit UUIDs
-                    case 0x03: // Complete list of 16-bit UUIDs
-                        while (length >= 2) {
-                            UUID serviceUUID= UUID.fromString(String.format("%08x-0000-1000-8000-00805f9b34fb", buffer.getShort()));
-                            stop= filterServiceUuids.isEmpty() || filterServiceUuids.contains(serviceUUID);
-                            if (stop) {
-                                foundDevice(bluetoothDevice, rssi);
-                            }
-
-                            length -= 2;
-                        }
-                        break;
-
-                    case 0x06: // Partial list of 128-bit UUIDs
-                    case 0x07: // Complete list of 128-bit UUIDs
-                        while (!stop && length >= 16) {
-                            long lsb= buffer.getLong(), msb= buffer.getLong();
-                            stop= filterServiceUuids.isEmpty() || filterServiceUuids.contains(new UUID(msb, lsb));
-                            if (stop) {
-                                foundDevice(bluetoothDevice, rssi);
-                            }
-                            length -= 16;
-                        }
-                        break;
-
-                    default:
-                        buffer.position(buffer.position() + length - 1);
-                        break;
-                }
-            }
-
-            if (!stop && filterServiceUuids.isEmpty()) {
-                foundDevice(bluetoothDevice, rssi);
-            }
-        }
-    };
-
+    @TargetApi(22)
     private void startBleScan() {
         scannedDevicesAdapter.clear();
         isScanning= true;
@@ -276,18 +237,96 @@ public class BleScannerFragment extends DialogFragment {
         scannerHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-             stopBleScan();
+                stopBleScan();
             }
         }, scanPeriod);
 
-        ///< TODO: Use startScan method instead from API 21
-        btAdapter.startLeScan(scanCallback);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            ///< TODO: Use startScan method instead from API 21
+            deprecatedScanCallback= new BluetoothAdapter.LeScanCallback() {
+                private void foundDevice(final BluetoothDevice btDevice, final int rssi) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scannedDevicesAdapter.update(new ScannedDeviceInfo(btDevice, rssi));
+                        }
+                    });
+                }
+                @Override
+                public void onLeScan(BluetoothDevice bluetoothDevice, int rssi, byte[] scanRecord) {
+                    ///< Service UUID parsing code taking from stack overflow= http://stackoverflow.com/a/24539704
+
+                    ByteBuffer buffer= ByteBuffer.wrap(scanRecord).order(ByteOrder.LITTLE_ENDIAN);
+                    boolean stop= false;
+                    while (!stop && buffer.remaining() > 2) {
+                        byte length = buffer.get();
+                        if (length == 0) break;
+
+                        byte type = buffer.get();
+                        switch (type) {
+                            case 0x02: // Partial list of 16-bit UUIDs
+                            case 0x03: // Complete list of 16-bit UUIDs
+                                while (length >= 2) {
+                                    UUID serviceUUID= UUID.fromString(String.format("%08x-0000-1000-8000-00805f9b34fb", buffer.getShort()));
+                                    stop= filterServiceUuids.isEmpty() || filterServiceUuids.contains(serviceUUID);
+                                    if (stop) {
+                                        foundDevice(bluetoothDevice, rssi);
+                                    }
+
+                                    length -= 2;
+                                }
+                                break;
+
+                            case 0x06: // Partial list of 128-bit UUIDs
+                            case 0x07: // Complete list of 128-bit UUIDs
+                                while (!stop && length >= 16) {
+                                    long lsb= buffer.getLong(), msb= buffer.getLong();
+                                    stop= filterServiceUuids.isEmpty() || filterServiceUuids.contains(new UUID(msb, lsb));
+                                    if (stop) {
+                                        foundDevice(bluetoothDevice, rssi);
+                                    }
+                                    length -= 16;
+                                }
+                                break;
+
+                            default:
+                                buffer.position(buffer.position() + length - 1);
+                                break;
+                        }
+                    }
+
+                    if (!stop && filterServiceUuids.isEmpty()) {
+                        foundDevice(bluetoothDevice, rssi);
+                    }
+                }
+            };
+            btAdapter.startLeScan(deprecatedScanCallback);
+        } else {
+            api21ScallCallback= new ScanCallback() {
+                @Override
+                public void onScanResult(int callbackType, final ScanResult result) {
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scannedDevicesAdapter.update(new ScannedDeviceInfo(result.getDevice(), result.getRssi()));
+                        }
+                    });
+
+                    super.onScanResult(callbackType, result);
+                }
+            };
+            btAdapter.getBluetoothLeScanner().startScan(api21ScanFilters, new ScanSettings.Builder().build(), api21ScallCallback);
+        }
     }
 
     private void stopBleScan() {
         if (isScanning) {
-            ///< TODO: Use stopScan method instead from API 21
-            btAdapter.stopLeScan(scanCallback);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                ///< TODO: Use stopScan method instead from API 21
+                btAdapter.stopLeScan(deprecatedScanCallback);
+            } else {
+                btAdapter.getBluetoothLeScanner().stopScan(api21ScallCallback);
+            }
 
             isScanning= false;
             scanControl.setText(R.string.ble_scan);
