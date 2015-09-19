@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Scanner</string>
+    <string name="ble_scan">Scan</string>
+    <string name="ble_scan_cancel">Cancel</string>
+    <string name="label_unknown_device">Unknown Device</string>
+    <string name="title_scanned_devices">Scanned Devices</string>
+
+    <string name="dialog_title_error">Error</string>
+    <string name="no_bt_dialog_ok">OK</string>
+    <string name="error_scanner_listener">must implement the ScannerListener interface</string>
+    <string name="error_no_bluetooth_adapter">Bluetooth adapter not found</string>
+</resources>

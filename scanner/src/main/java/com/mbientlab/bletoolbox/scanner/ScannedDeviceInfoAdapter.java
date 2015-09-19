@@ -12,8 +12,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.mbientlab.bletoolbox.R;
-
 import java.util.Locale;
 
 /**
