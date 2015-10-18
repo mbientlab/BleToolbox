@@ -119,7 +119,6 @@ public class BleScannerFragment extends Fragment {
         // Required empty public constructor
     }
 
-    @TargetApi(23)
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -138,7 +137,7 @@ public class BleScannerFragment extends Fragment {
             new AlertDialog.Builder(owner).setTitle(R.string.dialog_title_error)
                     .setMessage(R.string.error_no_bluetooth_adapter)
                     .setCancelable(false)
-                    .setPositiveButton(R.string.no_bt_dialog_ok, new DialogInterface.OnClickListener() {
+                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
                             owner.finish();
                         }
@@ -148,44 +147,8 @@ public class BleScannerFragment extends Fragment {
         } else if (!btAdapter.isEnabled()) {
             final Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && owner.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // Permission code taken from Radius Networks
-            // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
-
-            // Android M Permission check
-            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-            builder.setTitle(R.string.title_request_permission);
-            builder.setMessage(R.string.error_location_access);
-            builder.setPositiveButton(android.R.string.ok, null);
-            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
-                }
-            });
-            builder.show();
         } else {
             isScanReady = true;
-        }
-    }
-
-    // Permission code taken from Radius Networks
-    // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSION_REQUEST_COARSE_LOCATION: {
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                    builder.setTitle("Functionality limited");
-                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
-                    builder.setPositiveButton(android.R.string.ok, null);
-                    builder.show();
-                } else {
-                    isScanReady= true;
-                    startBleScan();
-                }
-            }
         }
     }
 
@@ -270,6 +233,11 @@ public class BleScannerFragment extends Fragment {
 
     @TargetApi(22)
     public void startBleScan() {
+        if (!checkLocationPermission()) {
+            scanControl.setText(R.string.ble_scan);
+            return;
+        }
+
         scannedDevicesAdapter.clear();
         isScanning= true;
         scanControl.setText(R.string.ble_scan_cancel);
@@ -367,6 +335,46 @@ public class BleScannerFragment extends Fragment {
 
             isScanning= false;
             scanControl.setText(R.string.ble_scan);
+        }
+    }
+
+    @TargetApi(23)
+    private boolean checkLocationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                getActivity().checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Permission code taken from Radius Networks
+            // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
+
+            // Android M Permission check
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle(R.string.title_request_permission);
+            builder.setMessage(R.string.error_location_access);
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+                }
+            });
+            builder.show();
+            return false;
+        }
+        return true;
+    }
+
+    // Permission code taken from Radius Networks
+    // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_COARSE_LOCATION: {
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    new MacAddressEntryDialogFragment().show(getFragmentManager(), "mac_address_entry");
+                } else {
+                    isScanReady= true;
+                    startBleScan();
+                }
+            }
         }
     }
 }

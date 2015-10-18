@@ -4,11 +4,14 @@
     <string name="ble_scan_cancel">Cancel</string>
     <string name="label_unknown_device">Unknown Device</string>
 
+    <string name="instruction_enter_mac_address">Location permission denied.  You can still connect to the device by manually
+        entering the device\'s MAC address, in the form XX:XX:XX:XX:XX:XX</string>
     <string name="title_scanned_devices">Scanned Devices</string>
     <string name="title_request_permission">Permission Request</string>
+    <string name="title_mac_address">MAC Address Entry</string>
 
     <string name="dialog_title_error">Error</string>
-    <string name="no_bt_dialog_ok">OK</string>
+    <string name="error_invalid_mac_address">Invalid MAC Address</string>
     <string name="error_scanner_listener">must implement the ScannerListener interface</string>
     <string name="error_no_bluetooth_adapter">Bluetooth adapter not found</string>
     <string name="error_location_access">App requires location access to scan for Bluetooth devices</string>
