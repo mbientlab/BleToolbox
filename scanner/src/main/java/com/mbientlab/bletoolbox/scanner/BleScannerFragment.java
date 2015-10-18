@@ -4,6 +4,7 @@
 
 package com.mbientlab.bletoolbox.scanner;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -18,6 +19,7 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -62,7 +64,7 @@ import java.util.UUID;
  * @author Eric Tsai
  */
 public class BleScannerFragment extends DialogFragment {
-    private static final int REQUEST_ENABLE_BT = 1;
+    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2;;
 
     /**
      * Event listener for the {@link BleScannerFragment}
@@ -101,10 +103,8 @@ public class BleScannerFragment extends DialogFragment {
         void retrieveFragmentReference(BleScannerFragment scannerFragment);
     }
 
-    private static final String KEY_SCAN_PERIOD=
-            "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
-    private static final String KEY_SERVICE_UUID=
-            "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
+    private static final String KEY_SCAN_PERIOD= "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
+    private static final String KEY_SERVICE_UUID= "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
 
     private final static long DEFAULT_SCAN_PERIOD= 5000L;
 
@@ -178,6 +178,7 @@ public class BleScannerFragment extends DialogFragment {
     private ScannerListener listener;
     private ScannerCommunicationBus commBus= null;
 
+    @TargetApi(23)
     @Override
     public void onAttach(final Activity activity) {
         if (!(activity instanceof ScannerListener)) {
@@ -200,8 +201,24 @@ public class BleScannerFragment extends DialogFragment {
                     .create()
                     .show();
         } else if (!btAdapter.isEnabled()) {
-            final Intent enableIntent= new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            final Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && activity.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Permission code taken from Radius Networks
+            // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
+
+            // Android M Permission check
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle(R.string.title_request_permission);
+            builder.setMessage(R.string.error_location_access);
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+                }
+            });
+            builder.show();
         } else {
             isScanReady = true;
         }
@@ -213,6 +230,26 @@ public class BleScannerFragment extends DialogFragment {
 
 
         super.onAttach(activity);
+    }
+
+    // Permission code taken from Radius Networks
+    // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_COARSE_LOCATION: {
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                    builder.setTitle("Functionality limited");
+                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.show();
+                } else {
+                    isScanReady= true;
+                    startBleScan();
+                }
+            }
+        }
     }
 
     @Override
