@@ -5,6 +5,7 @@
 package com.mbientlab.bletoolbox.examples;
 
 import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
@@ -16,7 +17,7 @@ import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import java.util.Locale;
 import java.util.UUID;
 
-public class ScannerActivity extends AppCompatActivity implements BleScannerFragment.ScannerListener, BleScannerFragment.ScannerCommunicationBus {
+public class ScannerActivity extends AppCompatActivity implements BleScannerFragment.ScannerCommunicationBus {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +50,10 @@ public class ScannerActivity extends AppCompatActivity implements BleScannerFrag
 
     @Override
     public void onDeviceSelected(BluetoothDevice device) {
-        Toast.makeText(this, String.format(Locale.US, "Selected device: %s", device.getAddress()), Toast.LENGTH_LONG).show();
+        Intent intent = this.getIntent();
+        intent.putExtra(MainActivity.EXTRA_BLE_DEVICE, device);
+        this.setResult(RESULT_OK, intent);
+        finish();
     }
 
     @Override
@@ -60,10 +64,5 @@ public class ScannerActivity extends AppCompatActivity implements BleScannerFrag
     @Override
     public long getScanDuration() {
         return 10000;
-    }
-
-    @Override
-    public void retrieveFragmentReference(BleScannerFragment scannerFragment) {
-
     }
 }

@@ -25,8 +25,9 @@ import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import java.util.Locale;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements BleScannerFragment.ScannerListener {
-    private final static int REQUEST_ENABLE_BT= 0;
+public class MainActivity extends AppCompatActivity {
+    public static final String EXTRA_BLE_DEVICE= "com.mbientlab.bletoolbox.examples.MainActivity.EXTRA_BLE_DEVICE";
+    private final static int REQUEST_ENABLE_BT= 0, SCAN_DEVICE=1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +61,12 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
                     finish();
                 }
                 break;
+            case SCAN_DEVICE:
+                if (data != null) {
+                    device = data.getParcelableExtra(MainActivity.EXTRA_BLE_DEVICE);
+                    Toast.makeText(this, "Device selected: " + device.getAddress(), Toast.LENGTH_LONG).show();
+                }
+                break;
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
@@ -86,14 +93,9 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
         return super.onOptionsItemSelected(item);
     }
 
-    public void showBleScan(View v) {
-        BleScannerFragment.newInstance(new UUID[] {UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a")})
-                .show(getFragmentManager(), "ble_scanner_fragment");
-    }
-
     public void startBleScanActivity(View v) {
         Intent bleScanIntent= new Intent(this, ScannerActivity.class);
-        startActivity(bleScanIntent);
+        startActivityForResult(bleScanIntent, SCAN_DEVICE);
     }
 
     private BluetoothDevice device;
@@ -102,11 +104,5 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
         dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_BLE_DEVICE, device);
         dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_MODEL_NUMBER, "0");
         startActivity(dfuIntent);
-    }
-
-    @Override
-    public void onDeviceSelected(BluetoothDevice device) {
-        this.device= device;
-        Toast.makeText(this, String.format(Locale.US, "Selected device: %s", device.getAddress()), Toast.LENGTH_LONG).show();
     }
 }

@@ -8,7 +8,7 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.DialogFragment;
+import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -40,8 +40,8 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * A {@link DialogFragment} that performs a Bluetooth LE scan and displays the results in a selectable list.  To use this
- * fragment, the {@link BluetoothAdapter} must be non-null and enabled and implement the {@link ScannerListener} interface i.e. <br>
+ * A {@link Fragment} that performs a Bluetooth LE scan and displays the results in a selectable list.  To use this
+ * fragment, the {@link BluetoothAdapter} must be non-null and enabled and implement the {@link ScannerCommunicationBus} interface i.e. <br>
  * <blockquote>
  * <pre>
  * public class ExampleActivity extends Activity implements BleScannerFragment.ScannerListener {
@@ -63,21 +63,7 @@ import java.util.UUID;
  * </blockquote>
  * @author Eric Tsai
  */
-public class BleScannerFragment extends DialogFragment {
-    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2;;
-
-    /**
-     * Event listener for the {@link BleScannerFragment}
-     * @author Eric Tsai
-     */
-    public interface ScannerListener {
-        /**
-         * Called when the user has selected a Bluetooth device from the device list
-         * @param device Device the user selected
-         */
-        void onDeviceSelected(BluetoothDevice device);
-    }
-
+public class BleScannerFragment extends Fragment {
     /**
      * Bridge to transfer settings from a parent activity to the fragment.  This interface is only needed if the
      * fragment is instantiated directly from the layout file rather than calling DialogFragment.show()
@@ -97,16 +83,16 @@ public class BleScannerFragment extends DialogFragment {
         long getScanDuration();
 
         /**
-         * Send a reference of this fragment to the calling activity
-         * @param scannerFragment Reference to this class
+         * Called when the user has selected a Bluetooth device from the device list
+         * @param device Device the user selected
          */
-        void retrieveFragmentReference(BleScannerFragment scannerFragment);
+        void onDeviceSelected(BluetoothDevice device);
     }
 
+    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2;
     private static final String KEY_SCAN_PERIOD= "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
     private static final String KEY_SERVICE_UUID= "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
-
-    private final static long DEFAULT_SCAN_PERIOD= 5000L;
+    private static final long DEFAULT_SCAN_PERIOD= 5000L;
 
     /**
      * Creates an instance of the fragment with default configuration
@@ -175,62 +161,7 @@ public class BleScannerFragment extends DialogFragment {
     private ArrayList<ScanFilter> api21ScanFilters;
     private boolean isScanReady;
 
-    private ScannerListener listener;
     private ScannerCommunicationBus commBus= null;
-
-    @TargetApi(23)
-    @Override
-    public void onAttach(final Activity activity) {
-        if (!(activity instanceof ScannerListener)) {
-            throw new ClassCastException(String.format(Locale.US, "%s %s", activity.toString(),
-                    activity.getString(R.string.error_scanner_listener)));
-        }
-
-        listener= (ScannerListener) activity;
-        btAdapter= ((BluetoothManager) activity.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
-
-        if (btAdapter == null) {
-            new AlertDialog.Builder(activity).setTitle(R.string.dialog_title_error)
-                    .setMessage(R.string.error_no_bluetooth_adapter)
-                    .setCancelable(false)
-                    .setPositiveButton(R.string.no_bt_dialog_ok, new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-                            activity.finish();
-                        }
-                    })
-                    .create()
-                    .show();
-        } else if (!btAdapter.isEnabled()) {
-            final Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && activity.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // Permission code taken from Radius Networks
-            // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
-
-            // Android M Permission check
-            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-            builder.setTitle(R.string.title_request_permission);
-            builder.setMessage(R.string.error_location_access);
-            builder.setPositiveButton(android.R.string.ok, null);
-            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
-                }
-            });
-            builder.show();
-        } else {
-            isScanReady = true;
-        }
-
-        if (activity instanceof ScannerCommunicationBus) {
-            commBus= (ScannerCommunicationBus) activity;
-            commBus.retrieveFragmentReference(this);
-        }
-
-
-        super.onAttach(activity);
-    }
 
     // Permission code taken from Radius Networks
     // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
@@ -266,9 +197,58 @@ public class BleScannerFragment extends DialogFragment {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    @TargetApi(23)
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        final Activity owner= getActivity();
+
+        if (!(owner instanceof ScannerCommunicationBus)) {
+            throw new ClassCastException(String.format(Locale.US, "%s %s", owner.toString(),
+                    owner.getString(R.string.error_scanner_listener)));
+        }
+
+        commBus= (ScannerCommunicationBus) owner;
+        btAdapter= ((BluetoothManager) owner.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+
+        if (btAdapter == null) {
+            new AlertDialog.Builder(owner).setTitle(R.string.dialog_title_error)
+                    .setMessage(R.string.error_no_bluetooth_adapter)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.no_bt_dialog_ok, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            owner.finish();
+                        }
+                    })
+                    .create()
+                    .show();
+        } else if (!btAdapter.isEnabled()) {
+            final Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && owner.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Permission code taken from Radius Networks
+            // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
+
+            // Android M Permission check
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle(R.string.title_request_permission);
+            builder.setMessage(R.string.error_location_access);
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+                }
+            });
+            builder.show();
+        } else {
+            isScanReady = true;
+        }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         scannedDevicesAdapter= new ScannedDeviceInfoAdapter(getActivity(), R.id.blescan_entry_layout);
         scannedDevicesAdapter.setNotifyOnChange(true);
         mHandler = new Handler();
@@ -283,38 +263,18 @@ public class BleScannerFragment extends DialogFragment {
             api21ScanFilters= new ArrayList<>();
         }
 
-        if (commBus == null) {
-            scanDuration = getArguments().getLong(KEY_SCAN_PERIOD, DEFAULT_SCAN_PERIOD);
-            ParcelUuid[] filterParcelUuids= (ParcelUuid[]) getArguments().getParcelableArray(KEY_SERVICE_UUID);
 
-            if (filterParcelUuids != null) {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    for (ParcelUuid pUuid : filterParcelUuids) {
-                        filterServiceUuids.add(pUuid.getUuid());
-                    }
-                } else {
-                    for (ParcelUuid pUuid : filterParcelUuids) {
-                        api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(pUuid).build());
-                    }
+        scanDuration = commBus.getScanDuration();
+        UUID[] filterUuids= commBus.getFilterServiceUuids();
+
+        if (filterUuids != null) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                filterServiceUuids.addAll(Arrays.asList(filterUuids));
+            } else {
+                for (UUID uuid : filterUuids) {
+                    api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build());
                 }
             }
-        } else {
-            scanDuration = commBus.getScanDuration();
-            UUID[] filterUuids= commBus.getFilterServiceUuids();
-
-            if (filterUuids != null) {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    filterServiceUuids.addAll(Arrays.asList(filterUuids));
-                } else {
-                    for (UUID uuid : filterUuids) {
-                        api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build());
-                    }
-                }
-            }
-        }
-
-        if (getDialog() != null) {
-            getDialog().setTitle(R.string.title_scanned_devices);
         }
 
         ListView scannedDevices= (ListView) view.findViewById(R.id.blescan_devices);
@@ -324,8 +284,7 @@ public class BleScannerFragment extends DialogFragment {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 stopBleScan();
 
-                listener.onDeviceSelected(scannedDevicesAdapter.getItem(i).btDevice);
-                dismiss();
+                commBus.onDeviceSelected(scannedDevicesAdapter.getItem(i).btDevice);
             }
         });
 
