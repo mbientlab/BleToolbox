@@ -58,6 +58,16 @@ import java.util.UUID;
  *         Toast.makeText(this, String.format(Locale.US, "Selected device: %s",
  *                 device.getAddress()), Toast.LENGTH_LONG).show();
  *     }
+ *
+ *     &#64;Override
+ *     public UUID[] getFilterServiceUuids() {
+ *         return null;
+ *     }
+ *
+ *     &#64;Override
+ *     public UUID[] getScanDuration() {
+ *         return BleScannerFragment.DEFAULT_SCAN_PERIOD;
+ *     }
  * }
  * </pre>
  * </blockquote>
@@ -89,112 +99,24 @@ public class BleScannerFragment extends Fragment {
         void onDeviceSelected(BluetoothDevice device);
     }
 
+    public static final long DEFAULT_SCAN_PERIOD= 5000L;
     private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2;
-    private static final String KEY_SCAN_PERIOD= "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SCAN_PERIOD";
-    private static final String KEY_SERVICE_UUID= "com.mbientlab.bletoolbox.scanner.BleDeviceScannerFragment.KEY_SERVICE_UUID";
-    private static final long DEFAULT_SCAN_PERIOD= 5000L;
-
-    /**
-     * Creates an instance of the fragment with default configuration
-     * @return Scanner fragment that scans for 5000ms and shows all discovered devices
-     */
-    public static BleScannerFragment newInstance() {
-        return BleScannerFragment.newInstance(DEFAULT_SCAN_PERIOD, new UUID[]{});
-    }
-    /**
-     * Creates an instance of the fragment with a user specified scanning duration.
-     * @param scanDuration How long to scan for Bluetooth LE devices
-     * @return Scanner fragment that scans for a user specified duration and shows all discovered devices
-     */
-    public static BleScannerFragment newInstance(long scanDuration) {
-        return BleScannerFragment.newInstance(scanDuration, new UUID[]{});
-    }
-    /**
-     * Creates an instance of the fragment that only shows devices with one of the desired service UUIDs
-     * @param filterServiceUuids Array of allowed service UUIDs
-     * @return Scanner fragment that scans for 5000ms and filters the results
-     */
-    public static BleScannerFragment newInstance(UUID[] filterServiceUuids) {
-        return BleScannerFragment.newInstance(DEFAULT_SCAN_PERIOD, filterServiceUuids);
-    }
-    /**
-     * Creates an instance of the fragment that only shows devices with one of the desired service UUIDs found within
-     * the given scanning duration.
-     * @param scanDuration How long to scan for Bluetooth LE devices
-     * @param filterServiceUuids Array of allowed service UUIDs
-     * @return Scanner fragment that scans for a user specified duration and filters the results
-     */
-    public static BleScannerFragment newInstance(long scanDuration, UUID[] filterServiceUuids) {
-        ParcelUuid[] filterServiceParcelUuids= new ParcelUuid[filterServiceUuids.length];
-        for(int i= 0; i < filterServiceUuids.length; i++) {
-            filterServiceParcelUuids[i]= new ParcelUuid(filterServiceUuids[i]);
-        }
-
-        Bundle bundle= new Bundle();
-        bundle.putLong(BleScannerFragment.KEY_SCAN_PERIOD, scanDuration);
-        bundle.putParcelableArray(BleScannerFragment.KEY_SERVICE_UUID, filterServiceParcelUuids);
-
-        BleScannerFragment newFragment= new BleScannerFragment();
-        newFragment.setArguments(bundle);
-
-        return newFragment;
-    }
-
-    /**
-     * Required empty public constructor.  Users should use the static methods for instantiating this class.
-     * @see #newInstance()
-     * @see #newInstance(long)
-     * @see #newInstance(java.util.UUID[])
-     * @see #newInstance(long, java.util.UUID[])
-     */
-    public BleScannerFragment() {
-        // Required empty public constructor
-    }
 
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
     private Button scanControl;
     private Handler mHandler;
     private boolean isScanning= false;
     private BluetoothAdapter btAdapter= null;
-    private long scanDuration;
     private HashSet<UUID> filterServiceUuids;
     private ArrayList<ScanFilter> api21ScanFilters;
     private boolean isScanReady;
-
     private ScannerCommunicationBus commBus= null;
 
-    // Permission code taken from Radius Networks
-    // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSION_REQUEST_COARSE_LOCATION: {
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                    builder.setTitle("Functionality limited");
-                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
-                    builder.setPositiveButton(android.R.string.ok, null);
-                    builder.show();
-                } else {
-                    isScanReady= true;
-                    startBleScan();
-                }
-            }
-        }
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
-            case REQUEST_ENABLE_BT:
-                if (resultCode == Activity.RESULT_CANCELED) {
-                    getActivity().finish();
-                } else {
-                    startBleScan();
-                }
-                break;
-        }
-        super.onActivityResult(requestCode, resultCode, data);
+    /**
+     * Required empty public constructor.  Activities using this fragment must implement the {@link ScannerCommunicationBus} interface
+     */
+    public BleScannerFragment() {
+        // Required empty public constructor
     }
 
     @TargetApi(23)
@@ -247,6 +169,40 @@ public class BleScannerFragment extends Fragment {
         }
     }
 
+    // Permission code taken from Radius Networks
+    // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_COARSE_LOCATION: {
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                    builder.setTitle("Functionality limited");
+                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.show();
+                } else {
+                    isScanReady= true;
+                    startBleScan();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case REQUEST_ENABLE_BT:
+                if (resultCode == Activity.RESULT_CANCELED) {
+                    getActivity().finish();
+                } else {
+                    startBleScan();
+                }
+                break;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         scannedDevicesAdapter= new ScannedDeviceInfoAdapter(getActivity(), R.id.blescan_entry_layout);
@@ -263,8 +219,6 @@ public class BleScannerFragment extends Fragment {
             api21ScanFilters= new ArrayList<>();
         }
 
-
-        scanDuration = commBus.getScanDuration();
         UUID[] filterUuids= commBus.getFilterServiceUuids();
 
         if (filterUuids != null) {
@@ -324,10 +278,9 @@ public class BleScannerFragment extends Fragment {
             public void run() {
                 stopBleScan();
             }
-        }, scanDuration);
+        }, commBus.getScanDuration());
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            ///< TODO: Use startScan method instead from API 21
             deprecatedScanCallback= new BluetoothAdapter.LeScanCallback() {
                 private void foundDevice(final BluetoothDevice btDevice, final int rssi) {
                     mHandler.post(new Runnable() {
@@ -407,7 +360,6 @@ public class BleScannerFragment extends Fragment {
     public void stopBleScan() {
         if (isScanning) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                ///< TODO: Use stopScan method instead from API 21
                 btAdapter.stopLeScan(deprecatedScanCallback);
             } else {
                 btAdapter.getBluetoothLeScanner().stopScan(api21ScallCallback);
