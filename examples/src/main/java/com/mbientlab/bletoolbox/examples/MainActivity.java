@@ -19,16 +19,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
-import com.mbientlab.bletoolbox.dfu.MetaWearDfuActivity;
-import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
-
-import java.util.Locale;
-import java.util.UUID;
-
 public class MainActivity extends AppCompatActivity {
     public static final String EXTRA_BLE_DEVICE= "com.mbientlab.bletoolbox.examples.MainActivity.EXTRA_BLE_DEVICE";
     private final static int REQUEST_ENABLE_BT= 0, SCAN_DEVICE=1;
 
+    private BluetoothDevice device;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,13 +91,5 @@ public class MainActivity extends AppCompatActivity {
     public void startBleScanActivity(View v) {
         Intent bleScanIntent= new Intent(this, ScannerActivity.class);
         startActivityForResult(bleScanIntent, SCAN_DEVICE);
-    }
-
-    private BluetoothDevice device;
-    public void startDfu(View v) {
-        Intent dfuIntent= new Intent(this, MetaWearDfuActivity.class);
-        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_BLE_DEVICE, device);
-        dfuIntent.putExtra(MetaWearDfuActivity.EXTRA_MODEL_NUMBER, "0");
-        startActivity(dfuIntent);
     }
 }

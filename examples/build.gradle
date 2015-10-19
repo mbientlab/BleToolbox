@@ -25,7 +25,6 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':library')
     compile project(':scanner')
     compile 'com.android.support:appcompat-v7:23.1.0'
 }
