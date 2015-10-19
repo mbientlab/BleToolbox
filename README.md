@@ -17,7 +17,7 @@ repositories {
 Then, add the compile element to the dependencies closure in the module's build.gradle file.
 ```groovy
 dependencies {
-    compile 'com.mbientlab:bletoolbox:0.2.0'
+    compile 'com.mbientlab.bletoolbox:scanner:0.2.0'
 }
 ```
 
@@ -43,11 +43,12 @@ import android.support.v7.app.AppCompatActivity;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment.*;
 
-public class ExampleEmbeddedScannerActivity extends AppCompatActivity implements ScannerCommunicationBus {
+public class ExampleEmbeddedScannerActivity extends AppCompatActivityi 
+        implements ScannerCommunicationBus {
     @Override
     public void onDeviceSelected(BluetoothDevice device) {
-        Toast.makeText(this, String.format(Locale.US, "Selected device: %s", device.getAddress()), 
-            Toast.LENGTH_LONG).show();
+        Toast.makeText(this, String.format(Locale.US, "Selected device: %s", 
+                device.getAddress()), Toast.LENGTH_LONG).show();
     }
     
     @Override
