@@ -41,7 +41,8 @@ import java.util.UUID;
 
 /**
  * A {@link Fragment} that performs a Bluetooth LE scan and displays the results in a selectable list.  To use this
- * fragment, the {@link BluetoothAdapter} must be non-null and enabled and implement the {@link ScannerCommunicationBus} interface i.e. <br>
+ * fragment, the {@link BluetoothAdapter} must be non-null and enabled, and implement the {@link ScannerCommunicationBus}
+ * interface i.e. <br>
  * <blockquote>
  * <pre>
  * public class ExampleActivity extends Activity implements BleScannerFragment.ScannerListener {
@@ -75,19 +76,19 @@ import java.util.UUID;
  */
 public class BleScannerFragment extends Fragment {
     /**
-     * Bridge to transfer settings from a parent activity to the fragment.  This interface is only needed if the
-     * fragment is instantiated directly from the layout file rather than calling DialogFragment.show()
+     * Bridge to communicate with the container activity
      * @author Eric Tsai
      */
     public interface ScannerCommunicationBus {
         /**
          * Retrieve an array of allowed service UUIDs.  If no filtering should be done, return null.
-         * @return Service UUIDs to scan for
+         * @return Service UUIDs to scan for, null if all discovered devices should be shown
          */
         UUID[] getFilterServiceUuids();
 
         /**
-         * Retrieve how long to scan for Bluetooth LE devices
+         * Retrieve how long to scan for Bluetooth LE devices.  Users can return {@link #DEFAULT_SCAN_PERIOD} if
+         * they do not want to set their own scan duration value
          * @return Bluetooth LE scan duration, in milliseconds
          */
         long getScanDuration();
@@ -99,6 +100,10 @@ public class BleScannerFragment extends Fragment {
         void onDeviceSelected(BluetoothDevice device);
     }
 
+    /**
+     * Value that {@link ScannerCommunicationBus#getScanDuration getScanDuration} can return if users doesn't want to
+     * set their own scan duration value
+     */
     public static final long DEFAULT_SCAN_PERIOD= 5000L;
     private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2;
 
@@ -231,6 +236,9 @@ public class BleScannerFragment extends Fragment {
     private BluetoothAdapter.LeScanCallback deprecatedScanCallback= null;
     private ScanCallback api21ScallCallback= null;
 
+    /**
+     * Starts scanning for Bluetooth LE devices
+     */
     @TargetApi(22)
     public void startBleScan() {
         if (!checkLocationPermission()) {
@@ -325,6 +333,9 @@ public class BleScannerFragment extends Fragment {
         }
     }
 
+    /**
+     * Stops the Bluetooth LE scan
+     */
     public void stopBleScan() {
         if (isScanning) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
