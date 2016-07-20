@@ -113,7 +113,7 @@ public class BleScannerFragment extends Fragment {
     private boolean isScanning= false;
     private BluetoothAdapter btAdapter= null;
     private HashSet<UUID> filterServiceUuids;
-    private ArrayList<ScanFilter> api21ScanFilters;
+    private HashSet<ParcelUuid> api21FilterServiceUuids;
     private boolean isScanReady;
     private ScannerCommunicationBus commBus= null;
 
@@ -181,21 +181,17 @@ public class BleScannerFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            filterServiceUuids = new HashSet<>();
-        } else {
-            api21ScanFilters= new ArrayList<>();
-        }
-
         UUID[] filterUuids= commBus.getFilterServiceUuids();
 
-        if (filterUuids != null) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            filterServiceUuids = new HashSet<>();
+            if (filterUuids != null) {
                 filterServiceUuids.addAll(Arrays.asList(filterUuids));
-            } else {
-                for (UUID uuid : filterUuids) {
-                    api21ScanFilters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build());
-                }
+            }
+        } else {
+            api21FilterServiceUuids= new HashSet<>();
+            for (UUID uuid : filterUuids) {
+                api21FilterServiceUuids.add(new ParcelUuid(uuid));
             }
         }
 
@@ -319,17 +315,26 @@ public class BleScannerFragment extends Fragment {
             api21ScallCallback= new ScanCallback() {
                 @Override
                 public void onScanResult(int callbackType, final ScanResult result) {
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            scannedDevicesAdapter.update(new ScannedDeviceInfo(result.getDevice(), result.getRssi()));
+                    if (result.getScanRecord() != null && result.getScanRecord().getServiceUuids() != null) {
+                        boolean valid= true;
+                        for (ParcelUuid it : result.getScanRecord().getServiceUuids()) {
+                            valid&= api21FilterServiceUuids.contains(it);
                         }
-                    });
+
+                        if (valid) {
+                            mHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    scannedDevicesAdapter.update(new ScannedDeviceInfo(result.getDevice(), result.getRssi()));
+                                }
+                            });
+                        }
+                    }
 
                     super.onScanResult(callbackType, result);
                 }
             };
-            btAdapter.getBluetoothLeScanner().startScan(api21ScanFilters, new ScanSettings.Builder().build(), api21ScallCallback);
+            btAdapter.getBluetoothLeScanner().startScan(api21ScallCallback);
         }
     }
 

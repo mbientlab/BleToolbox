@@ -17,7 +17,7 @@ repositories {
 Then, add the compile element to the dependencies closure in the module's build.gradle file.
 ```groovy
 dependencies {
-    compile 'com.mbientlab.bletoolbox:scanner:0.2.0'
+    compile 'com.mbientlab.bletoolbox:scanner:0.2.1'
 }
 ```
 
