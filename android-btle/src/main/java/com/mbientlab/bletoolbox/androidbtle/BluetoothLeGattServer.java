@@ -54,7 +54,7 @@ import bolts.TaskCompletionSource;
  */
 
 public final class BluetoothLeGattServer {
-    interface NotificationListener {
+    public interface NotificationListener {
         void onChange(BtleGattCharacteristic characteristic, byte[] value);
     }
 
@@ -76,7 +76,7 @@ public final class BluetoothLeGattServer {
 
     private static final Queue<GattTask> pendingGattTasks = new ConcurrentLinkedQueue<>();
     private static void executeGattOperation(boolean ready) {
-        if (pendingGattTasks.isEmpty() && (pendingGattTasks.size() == 1 || ready)) {
+        if (!pendingGattTasks.isEmpty() && (pendingGattTasks.size() == 1 || ready)) {
             pendingGattTasks.peek().execute();
         }
     }
@@ -91,18 +91,18 @@ public final class BluetoothLeGattServer {
             switch (newState) {
                 case BluetoothProfile.STATE_CONNECTED:
                     if (status != 0) {
-                        server.destroy();
+                        server.tearDownGatt(true);
                         server.connectTaskSource.setError(new RuntimeException(String.format(Locale.US, "Non-zero connection changed status (%s)", status)));
                     } else {
                         gatt.discoverServices();
                     }
                     break;
                 case BluetoothProfile.STATE_DISCONNECTED:
-                    server.destroy();
                     if (server.disconnectTaskSource != null) {
-                        activeCharNotifyListeners.remove(gatt.getDevice());
+                        server.tearDownGatt(true);
                         server.disconnectTaskSource.setResult(null);
                     } else if (server.unexpectedDcHandler != null) {
+                        server.tearDownGatt(false);
                         server.unexpectedDcHandler.disconnected(status);
                     }
                     break;
@@ -114,19 +114,18 @@ public final class BluetoothLeGattServer {
             final BluetoothLeGattServer server = activeObjects.get(gatt.getDevice());
 
             if (status != 0) {
-                server.destroy();
+                server.tearDownGatt(true);
                 server.connectTaskSource.setError(new RuntimeException(String.format(Locale.US, "Non-zero service discovery status (%s)", status)));
             } else {
                 server.connectTaskSource.setResult(server);
             }
 
-            server.gattTaskCompleted();
             executeGattOperation(true);
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            GattTask task = pendingGattTasks.poll();
+            GattTask task = pendingGattTasks.peek();
             if (status != 0) {
                 task.taskCompletionSource().setError(new IllegalStateException("Non-zero status returned (" + status + ") for reading characteristic " + characteristic.toString()));
             } else {
@@ -134,12 +133,14 @@ public final class BluetoothLeGattServer {
             }
 
             activeObjects.get(gatt.getDevice()).gattTaskCompleted();
+
+            pendingGattTasks.poll();
             executeGattOperation(true);
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            GattTask task = pendingGattTasks.poll();
+            GattTask task = pendingGattTasks.peek();
             if (status != 0) {
                 task.taskCompletionSource().setError(new IllegalStateException("Non-zero status returned (" + status + ") for writing characteristic " + characteristic.toString()));
             } else {
@@ -147,6 +148,8 @@ public final class BluetoothLeGattServer {
             }
 
             activeObjects.get(gatt.getDevice()).gattTaskCompleted();
+
+            pendingGattTasks.poll();
             executeGattOperation(true);
         }
 
@@ -161,7 +164,7 @@ public final class BluetoothLeGattServer {
 
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
-            GattTask task = pendingGattTasks.poll();
+            GattTask task = pendingGattTasks.peek();
             if (status != 0) {
                 task.taskCompletionSource().setError(new IllegalStateException("Non-zero status returned (" + status + ") for writing descriptor for " + descriptor.getCharacteristic().toString()));
             } else {
@@ -169,6 +172,8 @@ public final class BluetoothLeGattServer {
             }
 
             activeObjects.get(gatt.getDevice()).gattTaskCompleted();
+
+            pendingGattTasks.poll();
             executeGattOperation(true);
         }
     };
@@ -187,7 +192,8 @@ public final class BluetoothLeGattServer {
     private final AtomicBoolean readyToClose = new AtomicBoolean();
     private final AtomicInteger gattOps = new AtomicInteger();
     private final AtomicReference<BluetoothGatt> gattRef = new AtomicReference<>();
-    private TaskCompletionSource<BluetoothLeGattServer> connectTaskSource, disconnectTaskSource;
+    private TaskCompletionSource<BluetoothLeGattServer> connectTaskSource;
+    private TaskCompletionSource<Void> disconnectTaskSource;
 
     private BluetoothLeGattServer(BluetoothDevice device, Context ctx, boolean autoConnect) {
         connectTaskSource = new TaskCompletionSource<>();
@@ -209,11 +215,11 @@ public final class BluetoothLeGattServer {
         return gatt != null && gatt.getService(gattService) != null;
     }
 
-    public Task<Boolean> writeCharacteristic(final BtleGattCharacteristic characteristic, final byte[] value, final WriteType type) {
+    public Task<Void> writeCharacteristic(final BtleGattCharacteristic characteristic, final byte[] value, final WriteType type) {
         final BluetoothGatt gatt = gattRef.get();
 
         if (gatt != null) {
-            final TaskCompletionSource<Boolean> taskSource = new TaskCompletionSource<>();
+            final TaskCompletionSource<Void> taskSource = new TaskCompletionSource<>();
             final TaskCompletionSource<byte[]> gattTaskSource = new TaskCompletionSource<>();
             gattTaskSource.getTask().continueWith(new Continuation<byte[], Void>() {
                 @Override
@@ -223,7 +229,7 @@ public final class BluetoothLeGattServer {
                     } else if (task.isCancelled()) {
                         taskSource.setError(new CancellationException("Write characteristic task cancelled for " + characteristic.toString()));
                     } else {
-                        taskSource.setResult(true);
+                        taskSource.setResult(null);
                     }
 
                     return null;
@@ -346,30 +352,35 @@ public final class BluetoothLeGattServer {
     }
 
     public Task<Void> close() {
-        BluetoothGatt gatt = gattRef.getAndSet(null);
+        BluetoothGatt gatt = gattRef.get();
         if (gatt != null) {
+            disconnectTaskSource = new TaskCompletionSource<>();
             if (gattOps.get() != 0) {
                 readyToClose.set(true);
             } else {
-                disconnectTaskSource = new TaskCompletionSource<>();
                 gatt.disconnect();
             }
+
+            return disconnectTaskSource.getTask();
         }
         return Task.forError(new IllegalStateException("No longer connected to the BTLE gatt server"));
     }
 
-    private void destroy() {
+    private void tearDownGatt(boolean refresh) {
         BluetoothGatt gatt = gattRef.getAndSet(null);
         if (gatt != null) {
             activeObjects.remove(gatt.getDevice());
+            activeCharNotifyListeners.remove(gatt.getDevice());
 
             try {
-                gatt.getClass().getMethod("refresh").invoke(gatt);
+                if (refresh) {
+                    gatt.getClass().getMethod("refresh").invoke(gatt);
+                }
             } catch (final Exception e) {
-                Log.w("bletoolbox", "Error refreshing gattRef cache", e);
-            } finally {
-                gatt.close();
+                Log.w("bletoolbox", "Error refreshing gatt services cache", e);
             }
+
+            gatt.close();
         }
     }
 

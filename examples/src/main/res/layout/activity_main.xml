@@ -15,4 +15,13 @@
         android:text="@string/label_ble_scan"
         android:onClick="startBleScanActivity"
         android:id="@+id/ble_scan_activity" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/ble_scan_activity"
+        android:onClick="disconnect"
+        android:text="Disconnect" />
 </RelativeLayout>
