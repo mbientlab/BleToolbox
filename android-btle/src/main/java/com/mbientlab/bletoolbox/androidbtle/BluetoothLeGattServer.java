@@ -35,12 +35,10 @@ import android.content.Context;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -403,16 +401,18 @@ public final class BluetoothLeGattServer {
     public Task<Void> close() {
         BluetoothGatt gatt = gattRef.get();
         if (gatt != null) {
-            disconnectTaskSource = new TaskCompletionSource<>();
-            if (gattOps.get() != 0) {
-                readyToClose.set(true);
-            } else {
-                gatt.disconnect();
+            if (disconnectTaskSource == null) {
+                disconnectTaskSource = new TaskCompletionSource<>();
+                if (gattOps.get() != 0) {
+                    readyToClose.set(true);
+                } else {
+                    gatt.disconnect();
+                }
             }
 
             return disconnectTaskSource.getTask();
         }
-        return Task.forError(new IllegalStateException("No longer connected to the BTLE gatt server"));
+        return Task.forResult(null);
     }
 
     private void tearDownGatt(boolean refresh) {
