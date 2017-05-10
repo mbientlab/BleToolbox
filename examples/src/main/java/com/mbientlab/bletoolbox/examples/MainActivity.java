@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
                 if (data != null) {
                     device = data.getParcelableExtra(MainActivity.EXTRA_BLE_DEVICE);
 
-                    BluetoothLeGattServer.connect(device, this, false)
+                    BluetoothLeGattServer.connect(device, this, false, 5000L)
                             .onSuccessTask(new Continuation<BluetoothLeGattServer, Task<byte[][]>>() {
                                 @Override
                                 public Task<byte[][]> then(Task<BluetoothLeGattServer> task) throws Exception {
@@ -89,7 +89,8 @@ public class MainActivity extends AppCompatActivity {
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a25-0000-1000-8000-00805f9b34fb")}
                                     });
                                 }
-                            }, Task.UI_THREAD_EXECUTOR).onSuccessTask(new Continuation<byte[][], Task<Void>>() {
+                            }, Task.UI_THREAD_EXECUTOR)
+                            .onSuccessTask(new Continuation<byte[][], Task<Void>>() {
                                 @Override
                                 public Task<Void> then(Task<byte[][]> task) throws Exception {
                                     for(byte[] it: task.getResult()) {
@@ -103,8 +104,7 @@ public class MainActivity extends AppCompatActivity {
                                                 }
                                             });
                                 }
-                            })
-                            .continueWithTask(new Continuation<Void, Task<Void>>() {
+                            }).onSuccessTask(new Continuation<Void, Task<Void>>() {
                                 @Override
                                 public Task<Void> then(Task<Void> task) throws Exception {
                                     return gattServer.writeCharacteristic(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
@@ -114,6 +114,14 @@ public class MainActivity extends AppCompatActivity {
                                                     {0x3, 0x2, 0x1},
                                                     {0x3, 0x1, 0x1}
                                             });
+                                }
+                            }).continueWith(new Continuation<Void, Void>() {
+                                @Override
+                                public Void then(Task<Void> task) throws Exception {
+                                    if (task.isFaulted()) {
+                                        Log.w("bletoolbox", "Error setting up btle device", task.getError());
+                                    }
+                                    return null;
                                 }
                             });
                 }

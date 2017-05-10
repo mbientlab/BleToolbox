@@ -41,6 +41,11 @@ import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -81,6 +86,7 @@ public final class BluetoothLeGattServer {
         }
     }
 
+    private static final ScheduledExecutorService taskScheduler = Executors.newScheduledThreadPool(4);
     private static final Map<BluetoothDevice, NotificationListener> activeCharNotifyListeners = new ConcurrentHashMap<>();
     private static final Map<BluetoothDevice, BluetoothLeGattServer> activeObjects = new ConcurrentHashMap<>();
     private static final BluetoothGattCallback btleGattCallback= new BluetoothGattCallback() {
@@ -92,6 +98,7 @@ public final class BluetoothLeGattServer {
                 case BluetoothProfile.STATE_CONNECTED:
                     if (status != 0) {
                         server.tearDownGatt(true);
+                        server.connTimeoutFuture.cancel(false);
                         server.connectTaskSource.setError(new RuntimeException(String.format(Locale.US, "Non-zero connection changed status (%s)", status)));
                     } else {
                         gatt.discoverServices();
@@ -113,6 +120,7 @@ public final class BluetoothLeGattServer {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             final BluetoothLeGattServer server = activeObjects.get(gatt.getDevice());
 
+            server.connTimeoutFuture.cancel(false);
             if (status != 0) {
                 server.tearDownGatt(true);
                 server.connectTaskSource.setError(new RuntimeException(String.format(Locale.US, "Non-zero service discovery status (%s)", status)));
@@ -178,16 +186,17 @@ public final class BluetoothLeGattServer {
         }
     };
 
-    public static Task<BluetoothLeGattServer> connect(BluetoothDevice device, Context ctx, boolean autoConnect) {
+    public static Task<BluetoothLeGattServer> connect(BluetoothDevice device, Context ctx, boolean autoConnect, long timeout) {
         if (activeObjects.containsKey(device)) {
             return Task.forResult(activeObjects.get(device));
         }
 
-        BluetoothLeGattServer newServerConn = new BluetoothLeGattServer(device, ctx, autoConnect);
+        BluetoothLeGattServer newServerConn = new BluetoothLeGattServer(device, ctx, autoConnect, timeout);
         activeObjects.put(device, newServerConn);
         return newServerConn.connectTaskSource.getTask();
     }
 
+    private ScheduledFuture<?> connTimeoutFuture;
     private UnexpectedDisconnectHandler unexpectedDcHandler;
     private final AtomicBoolean readyToClose = new AtomicBoolean();
     private final AtomicInteger gattOps = new AtomicInteger();
@@ -195,11 +204,19 @@ public final class BluetoothLeGattServer {
     private TaskCompletionSource<BluetoothLeGattServer> connectTaskSource;
     private TaskCompletionSource<Void> disconnectTaskSource;
 
-    private BluetoothLeGattServer(BluetoothDevice device, Context ctx, boolean autoConnect) {
+    private BluetoothLeGattServer(BluetoothDevice device, Context ctx, boolean autoConnect, final long timeout) {
         connectTaskSource = new TaskCompletionSource<>();
 
         gattRef.set(device.connectGatt(ctx, autoConnect, btleGattCallback));
         activeObjects.put(device, this);
+
+        connTimeoutFuture = taskScheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                tearDownGatt(true);
+                connectTaskSource.setError(new TimeoutException("Did not establish a connection within " + timeout + " milliseconds"));
+            }
+        }, timeout, TimeUnit.MILLISECONDS);
     }
 
     public void onUnexpectedDisconnect(UnexpectedDisconnectHandler handler) {
