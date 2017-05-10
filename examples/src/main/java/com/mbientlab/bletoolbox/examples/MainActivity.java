@@ -21,7 +21,6 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.mbientlab.bletoolbox.androidbtle.BluetoothLeGattServer;
-import com.mbientlab.bletoolbox.androidbtle.BtleGattCharacteristic;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -33,7 +32,8 @@ public class MainActivity extends AppCompatActivity {
     public static final String EXTRA_BLE_DEVICE= "com.mbientlab.bletoolbox.examples.MainActivity.EXTRA_BLE_DEVICE";
     private final static int REQUEST_ENABLE_BT= 0, SCAN_DEVICE=1;
 
-    private static UUID METAWEAR_GATT_SERVICE = UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a");
+    private static UUID METAWEAR_GATT_SERVICE = UUID.fromString("326a9000-85cb-9195-d9dd-464cfbbae75a"),
+        METAWEAR_CMD_CHAR = UUID.fromString("326A9001-85CB-9195-D9DD-464CFBBAE75A");
 
     private BluetoothDevice device;
     private BluetoothLeGattServer gattServer;
@@ -74,28 +74,46 @@ public class MainActivity extends AppCompatActivity {
                 if (data != null) {
                     device = data.getParcelableExtra(MainActivity.EXTRA_BLE_DEVICE);
 
-
                     BluetoothLeGattServer.connect(device, this, false)
-                            .onSuccessTask(new Continuation<BluetoothLeGattServer, Task<Void>>() {
+                            .onSuccessTask(new Continuation<BluetoothLeGattServer, Task<byte[][]>>() {
                                 @Override
-                                public Task<Void> then(Task<BluetoothLeGattServer> task) throws Exception {
-                                    gattServer = task.getResult();
+                                public Task<byte[][]> then(Task<BluetoothLeGattServer> task) throws Exception {
                                     Toast.makeText(MainActivity.this, "Device Connected: " + device.getAddress(), Toast.LENGTH_LONG).show();
 
-                                    return gattServer.enableNotifications(new BtleGattCharacteristic(METAWEAR_GATT_SERVICE, UUID.fromString("326A9006-85CB-9195-D9DD-464CFBBAE75A")),
+                                    gattServer = task.getResult();
+                                    return gattServer.readCharacteristic(new UUID[][] {
+                                            {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a26-0000-1000-8000-00805f9b34fb")},
+                                            {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb")},
+                                            {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a27-0000-1000-8000-00805f9b34fb")},
+                                            {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a29-0000-1000-8000-00805f9b34fb")},
+                                            {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a25-0000-1000-8000-00805f9b34fb")}
+                                    });
+                                }
+                            }, Task.UI_THREAD_EXECUTOR).onSuccessTask(new Continuation<byte[][], Task<Void>>() {
+                                @Override
+                                public Task<Void> then(Task<byte[][]> task) throws Exception {
+                                    for(byte[] it: task.getResult()) {
+                                        Log.i("bletoolbox", new String(it));
+                                    }
+                                    return gattServer.enableNotifications(METAWEAR_GATT_SERVICE, UUID.fromString("326A9006-85CB-9195-D9DD-464CFBBAE75A"),
                                             new BluetoothLeGattServer.NotificationListener() {
                                                 @Override
-                                                public void onChange(BtleGattCharacteristic characteristic, byte[] value) {
+                                                public void onChange(UUID gattService, UUID gattChar, byte[] value) {
                                                     Log.i("bletoolbox", Arrays.toString(value));
                                                 }
                                             });
                                 }
-                            }, Task.UI_THREAD_EXECUTOR)
+                            })
                             .continueWithTask(new Continuation<Void, Task<Void>>() {
                                 @Override
                                 public Task<Void> then(Task<Void> task) throws Exception {
-                                    return gattServer.writeCharacteristic(new BtleGattCharacteristic(METAWEAR_GATT_SERVICE, UUID.fromString("326A9001-85CB-9195-D9DD-464CFBBAE75A")),
-                                            new byte[] {0x1, 0x1, 0x1}, BluetoothLeGattServer.WriteType.WITHOUT_RESPONSE);
+                                    return gattServer.writeCharacteristic(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
+                                            BluetoothLeGattServer.WriteType.WITHOUT_RESPONSE, new byte[][] {
+                                                    {3, 3, 37, 12},
+                                                    {0x3, 0x4, 0x1},
+                                                    {0x3, 0x2, 0x1},
+                                                    {0x3, 0x1, 0x1}
+                                            });
                                 }
                             });
                 }
@@ -133,20 +151,19 @@ public class MainActivity extends AppCompatActivity {
 
     public void disconnect(View v) {
         if (gattServer != null) {
-            gattServer.writeCharacteristic(new BtleGattCharacteristic(METAWEAR_GATT_SERVICE, UUID.fromString("326A9001-85CB-9195-D9DD-464CFBBAE75A")),
-                            new byte[] {0x1, 0x1, 0x1}, BluetoothLeGattServer.WriteType.WITHOUT_RESPONSE)
-                    .continueWithTask(new Continuation<Void, Task<Void>>() {
-                        @Override
-                        public Task<Void> then(Task<Void> task) throws Exception {
-                            return gattServer.close();
-                        }
-                    }).continueWith(new Continuation<Void, Void>() {
-                        @Override
-                        public Void then(Task<Void> task) throws Exception {
-                            Toast.makeText(MainActivity.this, "Disconnected from device: " + device.getAddress(), Toast.LENGTH_LONG).show();
-                            return null;
-                        }
-                    }, Task.UI_THREAD_EXECUTOR);
+            gattServer.onUnexpectedDisconnect(new BluetoothLeGattServer.UnexpectedDisconnectHandler() {
+                @Override
+                public void disconnected(int status) {
+                    Log.i("bletoolbox", "Lost connection status = " + status);
+                }
+            });
+            gattServer.writeCharacteristic(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
+                        BluetoothLeGattServer.WriteType.WITHOUT_RESPONSE, new byte[][] {
+                            {0x3, 0x1, 0x0},
+                            {0x3, 0x2, 0x0},
+                            {0x3, 0x4, 0x0},
+                            {(byte) 0xfe, 0x6}
+                        });
         }
     }
 }

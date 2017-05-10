@@ -34,6 +34,8 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
@@ -55,10 +57,10 @@ import bolts.TaskCompletionSource;
 
 public final class BluetoothLeGattServer {
     public interface NotificationListener {
-        void onChange(BtleGattCharacteristic characteristic, byte[] value);
+        void onChange(UUID gattService, UUID gattChar, byte[] value);
     }
 
-    interface UnexpectedDisconnectHandler {
+    public interface UnexpectedDisconnectHandler {
         void disconnected(int status);
     }
 
@@ -144,7 +146,7 @@ public final class BluetoothLeGattServer {
             if (status != 0) {
                 task.taskCompletionSource().setError(new IllegalStateException("Non-zero status returned (" + status + ") for writing characteristic " + characteristic.toString()));
             } else {
-                task.taskCompletionSource().setResult(null);
+                task.taskCompletionSource().setResult(characteristic.getValue());
             }
 
             activeObjects.get(gatt.getDevice()).gattTaskCompleted();
@@ -157,7 +159,7 @@ public final class BluetoothLeGattServer {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             NotificationListener listener = activeCharNotifyListeners.get(gatt.getDevice());
             if (listener != null) {
-                listener.onChange(new BtleGattCharacteristic(characteristic.getService().getUuid(), characteristic.getUuid()),
+                listener.onChange(characteristic.getService().getUuid(), characteristic.getUuid(),
                         characteristic.getValue());
             }
         }
@@ -215,7 +217,21 @@ public final class BluetoothLeGattServer {
         return gatt != null && gatt.getService(gattService) != null;
     }
 
-    public Task<Void> writeCharacteristic(final BtleGattCharacteristic characteristic, final byte[] value, final WriteType type) {
+    public Task<Void> writeCharacteristic(final UUID gattService, final UUID gattChar, final WriteType type, final byte[][] values) {
+        Task<Void> task = Task.forResult(null);
+        for(final byte[] it: values) {
+            task = task.continueWithTask(new Continuation<Void, Task<Void>>() {
+                @Override
+                public Task<Void> then(Task<Void> task) throws Exception {
+                    return writeCharacteristic(gattService, gattChar, type, it);
+                }
+            });
+        }
+
+        return task;
+    }
+
+    public Task<Void> writeCharacteristic(final UUID gattService, final UUID gattChar, final WriteType type, final byte[] value) {
         final BluetoothGatt gatt = gattRef.get();
 
         if (gatt != null) {
@@ -227,11 +243,10 @@ public final class BluetoothLeGattServer {
                     if (task.isFaulted()) {
                         taskSource.setError(task.getError());
                     } else if (task.isCancelled()) {
-                        taskSource.setError(new CancellationException("Write characteristic task cancelled for " + characteristic.toString()));
+                        taskSource.setCancelled();
                     } else {
                         taskSource.setResult(null);
                     }
-
                     return null;
                 }
             });
@@ -241,8 +256,8 @@ public final class BluetoothLeGattServer {
             pendingGattTasks.add(new GattTask() {
                 @Override
                 public void execute() {
-                    BluetoothGattService service = gatt.getService(characteristic.serviceUuid);
-                    BluetoothGattCharacteristic androidGattChar = service.getCharacteristic(characteristic.uuid);
+                    BluetoothGattService service = gatt.getService(gattService);
+                    BluetoothGattCharacteristic androidGattChar = service.getCharacteristic(gattChar);
                     androidGattChar.setWriteType(type == WriteType.WITHOUT_RESPONSE ?
                             BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE :
                             BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
@@ -257,23 +272,56 @@ public final class BluetoothLeGattServer {
                     return gattTaskSource;
                 }
             });
+
             executeGattOperation(false);
             return taskSource.getTask();
         }
         return Task.forError(new IllegalStateException("No longer connected to the BTLE gatt server"));
     }
 
-    public Task<byte[]> readCharacteristic(final BtleGattCharacteristic characteristic) {
+    public Task<byte[][]> readCharacteristic(final UUID[][] gattUuidPairs) {
+        final TaskCompletionSource<byte[][]> taskSource = new TaskCompletionSource<>();
+
+        final ArrayList<Task<byte[]>> tasks = new ArrayList<>();
+        for(final UUID[] pair: gattUuidPairs) {
+            tasks.add(readCharacteristic(pair[0], pair[1]));
+        }
+
+        Task.whenAll(tasks).continueWith(new Continuation<Void, Void>() {
+            @Override
+            public Void then(Task<Void> task) throws Exception {
+                if (task.isFaulted()) {
+                    taskSource.setError(task.getError());
+                } else if (task.isCancelled()) {
+                    taskSource.setCancelled();
+                } else {
+                    byte[][] valuesArray = new byte[tasks.size()][];
+                    for (int i = 0; i < valuesArray.length; i++) {
+                        valuesArray[i] = tasks.get(i).getResult();
+                    }
+                    taskSource.setResult(valuesArray);
+                }
+
+                return null;
+            }
+        });
+
+        return taskSource.getTask();
+    }
+
+    public Task<byte[]> readCharacteristic(final UUID gattService, final UUID gattChar) {
         final BluetoothGatt gatt = gattRef.get();
-        final TaskCompletionSource<byte[]> taskSource = new TaskCompletionSource<>();
 
         if (gatt != null) {
+            final TaskCompletionSource<byte[]> taskSource = new TaskCompletionSource<>();
+
             gattOps.incrementAndGet();
 
             pendingGattTasks.add(new GattTask() {
                 @Override
                 public void execute() {
-                    gatt.readCharacteristic(gatt.getService(characteristic.serviceUuid).getCharacteristic(characteristic.uuid));
+                    Log.i("bletoolbox", "Reading {" + gattService + ", " + gattChar + "}");
+                    gatt.readCharacteristic(gatt.getService(gattService).getCharacteristic(gattChar));
                 }
 
                 @Override
@@ -281,19 +329,20 @@ public final class BluetoothLeGattServer {
                     return taskSource;
                 }
             });
+
             executeGattOperation(false);
-            throw new UnsupportedOperationException("Not yet implemented");
+            return taskSource.getTask();
         }
         return Task.forError(new IllegalStateException("No longer connected to the BTLE gatt server"));
     }
 
-    private Task<Void> editNotifications(final BtleGattCharacteristic characteristic, final NotificationListener listener) {
+    private Task<Void> editNotifications(UUID gattService, final UUID gattChar, final NotificationListener listener) {
         final BluetoothGatt gatt = gattRef.get();
         final TaskCompletionSource<Void> taskSource = new TaskCompletionSource<>();
 
         if (gatt != null) {
-            BluetoothGattService service = gatt.getService(characteristic.serviceUuid);
-            final BluetoothGattCharacteristic androidGattChar = service.getCharacteristic(characteristic.uuid);
+            BluetoothGattService service = gatt.getService(gattService);
+            final BluetoothGattCharacteristic androidGattChar = service.getCharacteristic(gattChar);
 
             int charProps = androidGattChar.getProperties();
             if ((charProps & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) {
@@ -306,7 +355,7 @@ public final class BluetoothLeGattServer {
                         if (task.isFaulted()) {
                             taskSource.setError(task.getError());
                         } else if (task.isCancelled()) {
-                            taskSource.setError(new CancellationException((listener == null ? "Disable notifications task cancelled for " : "Enable notifications task cancelled for ") + characteristic.toString()));
+                            taskSource.setCancelled();
                         } else {
                             if (listener == null) {
                                 activeCharNotifyListeners.remove(gatt.getDevice());
@@ -343,12 +392,12 @@ public final class BluetoothLeGattServer {
         }
         return Task.forError(new IllegalStateException("No longer connected to the BTLE gatt server"));
     }
-    public Task<Void> enableNotifications(final BtleGattCharacteristic characteristic, final NotificationListener listener) {
-        return editNotifications(characteristic, listener);
+    public Task<Void> enableNotifications(UUID gattService, UUID gattChar, final NotificationListener listener) {
+        return editNotifications(gattService, gattChar, listener);
     }
 
-    public Task<Void> disableNotifications(final BtleGattCharacteristic characteristic) {
-        return editNotifications(characteristic, null);
+    public Task<Void> disableNotifications(UUID gattService, UUID gattChar) {
+        return editNotifications(gattService, gattChar, null);
     }
 
     public Task<Void> close() {
