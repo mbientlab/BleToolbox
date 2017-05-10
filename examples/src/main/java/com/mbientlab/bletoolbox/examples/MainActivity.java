@@ -75,12 +75,20 @@ public class MainActivity extends AppCompatActivity {
                     device = data.getParcelableExtra(MainActivity.EXTRA_BLE_DEVICE);
 
                     BluetoothLeGattServer.connect(device, this, false, 5000L)
-                            .onSuccessTask(new Continuation<BluetoothLeGattServer, Task<byte[][]>>() {
+                            .onSuccessTask(new Continuation<BluetoothLeGattServer, Task<Integer>>() {
                                 @Override
-                                public Task<byte[][]> then(Task<BluetoothLeGattServer> task) throws Exception {
+                                public Task<Integer> then(Task<BluetoothLeGattServer> task) throws Exception {
                                     Toast.makeText(MainActivity.this, "Device Connected: " + device.getAddress(), Toast.LENGTH_LONG).show();
 
                                     gattServer = task.getResult();
+                                    return gattServer.readRssi();
+                                }
+                            }, Task.UI_THREAD_EXECUTOR)
+                            .onSuccessTask(new Continuation<Integer, Task<byte[][]>>() {
+                                @Override
+                                public Task<byte[][]> then(Task<Integer> task) throws Exception {
+                                    Log.i("bletoolbox", "RSSI = " + task.getResult());
+
                                     return gattServer.readCharacteristic(new UUID[][] {
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a26-0000-1000-8000-00805f9b34fb")},
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb")},
@@ -89,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a25-0000-1000-8000-00805f9b34fb")}
                                     });
                                 }
-                            }, Task.UI_THREAD_EXECUTOR)
+                            })
                             .onSuccessTask(new Continuation<byte[][], Task<Void>>() {
                                 @Override
                                 public Task<Void> then(Task<byte[][]> task) throws Exception {

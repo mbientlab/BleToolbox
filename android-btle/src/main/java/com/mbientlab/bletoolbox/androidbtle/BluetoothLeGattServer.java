@@ -34,6 +34,8 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.util.Log;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
@@ -177,6 +179,21 @@ public final class BluetoothLeGattServer {
                 task.taskCompletionSource().setError(new IllegalStateException("Non-zero status returned (" + status + ") for writing descriptor for " + descriptor.getCharacteristic().toString()));
             } else {
                 task.taskCompletionSource().setResult(null);
+            }
+
+            activeObjects.get(gatt.getDevice()).gattTaskCompleted();
+
+            pendingGattTasks.poll();
+            executeGattOperation(true);
+        }
+
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            GattTask task = pendingGattTasks.peek();
+            if (status != 0) {
+                task.taskCompletionSource().setError(new IllegalStateException("Non-zero status returned (" + status + ") for reading RRSI "));
+            } else {
+                task.taskCompletionSource().setResult(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(rssi).array());
             }
 
             activeObjects.get(gatt.getDevice()).gattTaskCompleted();
@@ -342,6 +359,46 @@ public final class BluetoothLeGattServer {
                 @Override
                 public TaskCompletionSource<byte[]> taskCompletionSource() {
                     return taskSource;
+                }
+            });
+
+            executeGattOperation(false);
+            return taskSource.getTask();
+        }
+        return Task.forError(new IllegalStateException("No longer connected to the BTLE gatt server"));
+    }
+
+    public Task<Integer> readRssi() {
+        final BluetoothGatt gatt = gattRef.get();
+
+        if (gatt != null) {
+            final TaskCompletionSource<Integer> taskSource = new TaskCompletionSource<>();
+            final TaskCompletionSource<byte[]> gattTaskSource = new TaskCompletionSource<>();
+
+            gattOps.incrementAndGet();
+
+            gattTaskSource.getTask().continueWith(new Continuation<byte[], Void>() {
+                @Override
+                public Void then(Task<byte[]> task) throws Exception {
+                    if (task.isFaulted()) {
+                        taskSource.setError(task.getError());
+                    } else if (task.isCancelled()) {
+                        taskSource.setCancelled();
+                    } else {
+                        taskSource.setResult(ByteBuffer.wrap(task.getResult()).order(ByteOrder.LITTLE_ENDIAN).getInt(0));
+                    }
+                    return null;
+                }
+            });
+            pendingGattTasks.add(new GattTask() {
+                @Override
+                public void execute() {
+                    gatt.readRemoteRssi();
+                }
+
+                @Override
+                public TaskCompletionSource<byte[]> taskCompletionSource() {
+                    return gattTaskSource;
                 }
             });
 
