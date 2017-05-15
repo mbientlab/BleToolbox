@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
                                     Toast.makeText(MainActivity.this, "Device Connected: " + device.getAddress(), Toast.LENGTH_LONG).show();
 
                                     gattServer = task.getResult();
-                                    return gattServer.readRssi();
+                                    return gattServer.readRssiAsync();
                                 }
                             }, Task.UI_THREAD_EXECUTOR)
                             .onSuccessTask(new Continuation<Integer, Task<byte[][]>>() {
@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
                                 public Task<byte[][]> then(Task<Integer> task) throws Exception {
                                     Log.i("bletoolbox", "RSSI = " + task.getResult());
 
-                                    return gattServer.readCharacteristic(new UUID[][] {
+                                    return gattServer.readCharacteristicAsync(new UUID[][] {
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a26-0000-1000-8000-00805f9b34fb")},
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb")},
                                             {UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb"), UUID.fromString("00002a27-0000-1000-8000-00805f9b34fb")},
@@ -104,10 +104,10 @@ public class MainActivity extends AppCompatActivity {
                                     for(byte[] it: task.getResult()) {
                                         Log.i("bletoolbox", new String(it));
                                     }
-                                    return gattServer.enableNotifications(METAWEAR_GATT_SERVICE, UUID.fromString("326A9006-85CB-9195-D9DD-464CFBBAE75A"),
+                                    return gattServer.enableNotificationsAsync(METAWEAR_GATT_SERVICE, UUID.fromString("326A9006-85CB-9195-D9DD-464CFBBAE75A"),
                                             new BluetoothLeGattServer.NotificationListener() {
                                                 @Override
-                                                public void onChange(UUID gattService, UUID gattChar, byte[] value) {
+                                                public void onChange(byte[] value) {
                                                     Log.i("bletoolbox", Arrays.toString(value));
                                                 }
                                             });
@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
                             }).onSuccessTask(new Continuation<Void, Task<Void>>() {
                                 @Override
                                 public Task<Void> then(Task<Void> task) throws Exception {
-                                    return gattServer.writeCharacteristic(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
+                                    return gattServer.writeCharacteristicAsync(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
                                             BluetoothLeGattServer.WriteType.WITHOUT_RESPONSE, new byte[][] {
                                                     {3, 3, 37, 12},
                                                     {0x3, 0x4, 0x1},
@@ -167,13 +167,18 @@ public class MainActivity extends AppCompatActivity {
 
     public void disconnect(View v) {
         if (gattServer != null) {
-            gattServer.onUnexpectedDisconnect(new BluetoothLeGattServer.UnexpectedDisconnectHandler() {
+            gattServer.onDisconnect(new BluetoothLeGattServer.DisconnectHandler() {
                 @Override
-                public void disconnected(int status) {
-                    Log.i("bletoolbox", "Lost connection status = " + status);
+                public void onDisconnect() {
+                    Log.i("bletoolbox", "Disconnected");
+                }
+
+                @Override
+                public void onUnexpectedDisconnect(int status) {
+                    Log.i("bletoolbox", "Unexpectedly lost connection = " + status);
                 }
             });
-            gattServer.writeCharacteristic(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
+            gattServer.writeCharacteristicAsync(METAWEAR_GATT_SERVICE, METAWEAR_CMD_CHAR,
                         BluetoothLeGattServer.WriteType.WITHOUT_RESPONSE, new byte[][] {
                             {0x3, 0x1, 0x0},
                             {0x3, 0x2, 0x0},
