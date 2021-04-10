@@ -105,7 +105,7 @@ public class BleScannerFragment extends Fragment {
      * set their own scan duration value
      */
     public static final long DEFAULT_SCAN_PERIOD= 5000L;
-    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2;
+    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2, PERMISSION_REQUEST_FINE_LOCATION= 3;
 
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
     private Button scanControl;
@@ -374,6 +374,23 @@ public class BleScannerFragment extends Fragment {
             });
             builder.show();
             return false;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                getActivity().checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Added for Android 10
+
+            // Android Q Permission check
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle(R.string.title_request_permission);
+            builder.setMessage(R.string.error_location_access);
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_REQUEST_FINE_LOCATION);
+                }
+            });
+            builder.show();
+            return false;
         }
         return true;
     }
@@ -383,6 +400,14 @@ public class BleScannerFragment extends Fragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
+            case PERMISSION_REQUEST_FINE_LOCATION: {
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    new MacAddressEntryDialogFragment().show(getFragmentManager(), "mac_address_entry");
+                } else {
+                    isScanReady= true;
+                    startBleScan();
+                }
+            }
             case PERMISSION_REQUEST_COARSE_LOCATION: {
                 if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     new MacAddressEntryDialogFragment().show(getFragmentManager(), "mac_address_entry");

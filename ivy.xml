@@ -1,0 +1,11 @@
+<ivy-module version="2.2" xmlns:m="http://ant.apache.org/ivy/maven">
+    <info organisation="com.mbientlab.bletoolbox" module="scanner" revision="0.3.1" status="integration" publication="20160719185932"/>
+    <configurations defaultconf="default">
+        <conf name="default" description="Android archive of the BleToolbox Scanner module"/>
+        <conf name="default-sources" description="Library source code"/>
+    </configurations>
+    <publications>
+        <artifact conf="default" type="aar" />
+        <artifact conf="default-sources" type="sources" ext="jar" m:classifier="sources" />
+    </publications>
+</ivy-module>
