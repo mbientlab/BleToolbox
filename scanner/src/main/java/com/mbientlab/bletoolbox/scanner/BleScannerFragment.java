@@ -105,7 +105,9 @@ public class BleScannerFragment extends Fragment {
      * set their own scan duration value
      */
     public static final long DEFAULT_SCAN_PERIOD= 5000L;
-    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2, PERMISSION_REQUEST_FINE_LOCATION= 3;
+    private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2,
+            PERMISSION_REQUEST_FINE_LOCATION= 3, PERMISSION_REQUEST_BLUETOOTH_SCAN=4,
+            PERMISSION_REQUEST_BLUETOOTH_CONNECT= 5;
 
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
     private Button scanControl;
@@ -354,9 +356,17 @@ public class BleScannerFragment extends Fragment {
         }
     }
 
-    @TargetApi(23)
+    @TargetApi(31)
     private boolean checkLocationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // versions S+ no longer require location services
+            if (getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
+                        PERMISSION_REQUEST_BLUETOOTH_SCAN);
+                return false;
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 getActivity().checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // Permission code taken from Radius Networks
             // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
@@ -400,15 +410,10 @@ public class BleScannerFragment extends Fragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
-            case PERMISSION_REQUEST_FINE_LOCATION: {
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    new MacAddressEntryDialogFragment().show(getFragmentManager(), "mac_address_entry");
-                } else {
-                    isScanReady= true;
-                    startBleScan();
-                }
-            }
-            case PERMISSION_REQUEST_COARSE_LOCATION: {
+            case PERMISSION_REQUEST_FINE_LOCATION:
+            case PERMISSION_REQUEST_COARSE_LOCATION:
+            case PERMISSION_REQUEST_BLUETOOTH_SCAN:
+            case PERMISSION_REQUEST_BLUETOOTH_CONNECT: {
                 if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     new MacAddressEntryDialogFragment().show(getFragmentManager(), "mac_address_entry");
                 } else {
