@@ -106,8 +106,7 @@ public class BleScannerFragment extends Fragment {
      */
     public static final long DEFAULT_SCAN_PERIOD= 5000L;
     private static final int REQUEST_ENABLE_BT = 1, PERMISSION_REQUEST_COARSE_LOCATION= 2,
-            PERMISSION_REQUEST_FINE_LOCATION= 3, PERMISSION_REQUEST_BLUETOOTH_SCAN=4,
-            PERMISSION_REQUEST_BLUETOOTH_CONNECT= 5;
+            PERMISSION_REQUEST_FINE_LOCATION= 3, PERMISSION_REQUEST_BLUETOOTH=4;
 
     private ScannedDeviceInfoAdapter scannedDevicesAdapter;
     private Button scanControl;
@@ -151,6 +150,11 @@ public class BleScannerFragment extends Fragment {
                     })
                     .create()
                     .show();
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                (getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)) {
+                requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
+                        PERMISSION_REQUEST_BLUETOOTH);
         } else if (!btAdapter.isEnabled()) {
             final Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
@@ -359,13 +363,7 @@ public class BleScannerFragment extends Fragment {
     @TargetApi(31)
     private boolean checkLocationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // versions S+ no longer require location services
-            if (getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
-                getActivity().checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
-                        PERMISSION_REQUEST_BLUETOOTH_SCAN);
-                return false;
-            }
+            return true;
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 getActivity().checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // Permission code taken from Radius Networks
@@ -411,15 +409,28 @@ public class BleScannerFragment extends Fragment {
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
             case PERMISSION_REQUEST_FINE_LOCATION:
-            case PERMISSION_REQUEST_COARSE_LOCATION:
-            case PERMISSION_REQUEST_BLUETOOTH_SCAN:
-            case PERMISSION_REQUEST_BLUETOOTH_CONNECT: {
+            case PERMISSION_REQUEST_COARSE_LOCATION: {
                 if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     new MacAddressEntryDialogFragment().show(getFragmentManager(), "mac_address_entry");
                 } else {
-                    isScanReady= true;
+                    isScanReady = true;
                     startBleScan();
                 }
+                break;
+            }
+            case PERMISSION_REQUEST_BLUETOOTH: {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (!btAdapter.isEnabled()) {
+                        final Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+                    } else {
+                        isScanReady = true;
+                        startBleScan();
+                    }
+                } else {
+                    getActivity().finish();
+                }
+                break;
             }
         }
     }
