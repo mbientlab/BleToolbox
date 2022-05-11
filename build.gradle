@@ -9,7 +9,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.2'  //Minimum supported Gradle version is 7.1.
+        classpath 'com.android.tools.build:gradle:7.1.3'  //Minimum supported Gradle version is 7.1.
     }
 }
 
